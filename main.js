@@ -23,6 +23,8 @@ let mainWindow = null
 let pluginWindow = null
 let service = null
 let restartCount = 0
+let logStream = null
+let quitting = false
 
 function resourcePaths() {
   return { nodePath, pnpmBinDir, dshEntry }
@@ -39,7 +41,8 @@ async function startDsh(config) {
 
   const { nodePath, pnpmBinDir, dshEntry } = resourcePaths()
   mkdirSync(config.logsDir(), { recursive: true })
-  const logStream = createWriteStream(join(config.logsDir(), 'dsh.log'), { flags: 'a' })
+  logStream?.end()
+  logStream = createWriteStream(join(config.logsDir(), 'dsh.log'), { flags: 'a' })
   const fullEnv = buildEnv({ DSH_HOME: config.dshHome(), binDir: pnpmBinDir })
 
   service = new DshService({
@@ -51,11 +54,17 @@ async function startDsh(config) {
     logStream.write(`\n[dsh-desktop] dsh error: ${err.message}\n`)
   })
   service.on('exit', (code) => {
+    if (quitting) return
     if (restartCount < 2 && code !== 0) {
       restartCount++
       logStream.write(`\n[dsh-desktop] dsh exited (${code}), restart #${restartCount}\n`)
       startDsh(config).then((svc) => {
         if (svc && mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(`http://127.0.0.1:${svc.port}/`)
+      }).catch((err) => {
+        logStream.write(`\n[dsh-desktop] dsh restart #${restartCount} failed: ${err.message}\n`)
+        if (restartCount >= 2) {
+          dialog.showErrorBox('dsh 重启失败', `${err.message}\n\n日志位置: ${join(config.logsDir(), 'dsh.log')}`)
+        }
       })
     }
   })
@@ -70,6 +79,7 @@ function createMainWindow() {
     webPreferences: { contextIsolation: true, nodeIntegration: false },
   })
   mainWindow.loadURL(`http://127.0.0.1:${service.port}/`)
+  mainWindow.on('closed', () => { mainWindow = null })
 }
 
 function createPluginWindow() {
@@ -145,8 +155,16 @@ if (!gotLock) {
     }
   })
 
+  // 退出竞态防护：quit 链一旦开始就置位，防止 stop() 的 child.kill()
+  // （Windows TerminateProcess，exit code 非 0）触发 'exit' → 幽灵重启。
+  // window-all-closed 必须在 service.stop() 之前置位——stop 期间的
+  // 'exit' 事件先于 app.quit() 的 before-quit 到达。
+  app.on('before-quit', () => { quitting = true })
+
   app.on('window-all-closed', async () => {
+    quitting = true
     if (service) await service.stop()
+    logStream?.end()
     app.quit()
   })
 }
