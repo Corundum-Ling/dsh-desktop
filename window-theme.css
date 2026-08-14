@@ -1,0 +1,106 @@
+/* 与 dsh Web UI 同源的 --dsw-* 变量（默认亮色兜底值，运行时由 theme:changed 广播覆盖） */
+:root {
+  --dsw-alias-bg-base: #ffffff;
+  --dsw-alias-bg-layer-1: #f9fafb;
+  --dsw-alias-bg-layer-2: #ffffff;
+  --dsw-alias-label-primary: #0f1115;
+  --dsw-alias-label-secondary: #61656c;
+  --dsw-alias-border-l1: rgba(0, 0, 0, 0.06);
+  --dsw-alias-border-l2: rgba(0, 0, 0, 0.1);
+  --dsw-alias-state-success-primary: #22c55e;
+  --dsw-alias-state-error-primary: #ec1313;
+  --dsw-alias-state-warn-primary: #f59e0b;
+  --dsw-alias-brand-primary: #4176e6;
+  --dsw-alias-bg-overlay: #e1e5ea;
+  --dsw-alias-button-primary-fill: #0f1115;
+  --dsw-alias-label-primary-foreground: #ffffff;
+  --dsw-alias-tooltip-bg: #2b2b2d;
+  --dsw-alias-scrollbar-bg-l1: #e5e5e5;
+}
+
+/* 全局基础 */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 顶栏：与 dsh 侧边栏风格一致 */
+.topbar {
+  background: var(--dsw-alias-bg-layer-1);
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.content { flex: 1; overflow: auto; padding: 16px; }
+
+/* 列表 */
+.plugin-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 10px; border-bottom: 1px solid var(--dsw-alias-border-l1);
+}
+.plugin-row:hover { background: var(--dsw-alias-bg-layer-1); }
+.bundle-group { font-weight: 600; margin: 12px 0 4px; color: var(--dsw-alias-label-secondary); font-size: 12px; }
+
+/* 开关 */
+.switch { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute; inset: 0; border-radius: 10px;
+  background: var(--dsw-alias-border-l2); transition: 0.2s; cursor: pointer;
+}
+.slider::before {
+  content: ''; position: absolute; width: 14px; height: 14px; left: 3px; top: 3px;
+  border-radius: 50%; background: #fff; transition: 0.2s;
+}
+.switch input:checked + .slider { background: var(--dsw-alias-state-success-primary); }
+.switch input:checked + .slider::before { transform: translateX(16px); }
+
+/* 按钮与输入 */
+button {
+  padding: 6px 14px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 6px;
+  background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary);
+  cursor: pointer; font-size: 13px;
+}
+button.primary { background: var(--dsw-alias-button-primary-fill); color: var(--dsw-alias-label-primary-foreground); border-color: transparent; }
+button.danger { color: var(--dsw-alias-state-error-primary); border-color: currentColor; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+input[type=text], select {
+  padding: 6px 10px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 6px;
+  background: var(--dsw-alias-bg-base); color: var(--dsw-alias-label-primary); font-size: 13px;
+}
+
+/* 状态文本 */
+.status { min-height: 20px; font-size: 12px; color: var(--dsw-alias-label-secondary); margin: 8px 0; }
+.status.error { color: var(--dsw-alias-state-error-primary); }
+pre.output {
+  background: var(--dsw-alias-bg-layer-1); border: 1px solid var(--dsw-alias-border-l1);
+  padding: 8px; font-size: 12px; white-space: pre-wrap; max-height: 200px; overflow: auto;
+  color: var(--dsw-alias-label-primary);
+}
+
+/* 卡片（市场） */
+.card {
+  border: 1px solid var(--dsw-alias-border-l1); border-radius: 8px;
+  padding: 12px; margin-bottom: 10px; background: var(--dsw-alias-bg-layer-2);
+}
+.card h3 { font-size: 14px; margin-bottom: 4px; }
+.card .desc { color: var(--dsw-alias-label-secondary); margin-bottom: 8px; }
+.card .meta { font-size: 12px; color: var(--dsw-alias-label-secondary); display: flex; gap: 12px; }
+.badge { padding: 1px 8px; border-radius: 10px; font-size: 11px; }
+.badge.ok { background: var(--dsw-alias-state-success-primary); color: #fff; }
+.badge.warn { background: var(--dsw-alias-state-warn-primary); color: #fff; }
+
+/* 搜索框行 */
+.search-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.search-row input { flex: 1; }

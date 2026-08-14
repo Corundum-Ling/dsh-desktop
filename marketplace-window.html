@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>插件市场</title>
+  <link rel="stylesheet" href="./window-theme.css">
+</head>
+<body>
+  <div class="topbar">插件市场 <span id="status" class="status" style="margin:0"></span></div>
+  <div class="content">
+    <div class="search-row">
+      <input type="text" id="search" placeholder="搜索插件名/说明...">
+      <select id="profile"></select>
+      <button id="refresh-btn">刷新</button>
+    </div>
+    <div id="list"></div>
+    <pre class="output" id="output" hidden></pre>
+  </div>
+  <script src="./marketplace-window.js"></script>
+</body>
+</html>

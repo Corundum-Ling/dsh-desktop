@@ -3,29 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <title>插件管理</title>
-  <style>
-    body { font-family: system-ui, sans-serif; margin: 16px; }
-    h1 { font-size: 16px; }
-    .row { display: flex; gap: 8px; margin-bottom: 12px; }
-    input[type=text] { flex: 1; padding: 6px; }
-    button { padding: 6px 12px; }
-    ul { list-style: none; padding: 0; }
-    li { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; }
-    pre { background: #f5f5f5; padding: 8px; font-size: 12px; white-space: pre-wrap; max-height: 200px; overflow: auto; }
-    .status { color: #666; font-size: 13px; min-height: 18px; }
-    .error { color: #c00; }
-  </style>
+  <link rel="stylesheet" href="./window-theme.css">
 </head>
 <body>
-  <h1>dsh 插件管理</h1>
-  <div class="status" id="status"></div>
-  <div class="row">
-    <input type="text" id="spec" placeholder="包名 或 github:user/repo">
-    <button id="install-btn">安装</button>
+  <div class="topbar">插件管理 <span id="status" class="status" style="margin:0"></span></div>
+  <div class="content">
+    <div class="search-row">
+      <input type="text" id="spec" placeholder="包名 或 github:user/repo">
+      <button class="primary" id="install-btn">安装</button>
+    </div>
+    <div id="plugin-list"></div>
+    <pre class="output" id="output" hidden></pre>
   </div>
-  <h2 style="font-size:14px">已安装</h2>
-  <ul id="plugin-list"></ul>
-  <pre id="output" hidden></pre>
   <script src="./plugin-window.js"></script>
 </body>
 </html>

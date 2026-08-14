@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>环境管理</title>
+  <link rel="stylesheet" href="./window-theme.css">
+</head>
+<body>
+  <div class="topbar">环境管理（profile） <span id="status" class="status" style="margin:0"></span></div>
+  <div class="content">
+    <div class="search-row">
+      <input type="text" id="new-name" placeholder="新 profile 名">
+      <button class="primary" id="create-btn">创建</button>
+    </div>
+    <div id="profile-list"></div>
+    <pre class="output" id="output" hidden></pre>
+  </div>
+  <script src="./env-window.js"></script>
+</body>
+</html>
