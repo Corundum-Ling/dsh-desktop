@@ -1,0 +1,47 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 准备内置运行时
+        run: npm run prepare:resources
+
+      - name: 构建安装包（自动执行发布门禁）
+        run: npm run dist
+
+      - name: 生成 SHA-256
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem -LiteralPath "dist" -Filter "DeepSeek Harness Setup *.exe" | Select-Object -First 1
+          if (-not $installer) { throw "未找到安装包" }
+          $hash = Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256
+          "$($hash.Hash)  $($installer.Name)" | Set-Content -LiteralPath "dist/SHA256SUMS.txt" -Encoding ascii
+
+      - name: 创建 Release 草稿
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          files: |
+            dist/DeepSeek Harness Setup *.exe
+            dist/SHA256SUMS.txt
