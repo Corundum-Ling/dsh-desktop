@@ -166,6 +166,20 @@ describe('install / remove / in-box 保护', () => {
     expect(patch).toContain("name: 'dsh-nonbundle'")
   })
 
+  it('install scoped 非 bundle：entry id 不安全 → 保守 needsRestart 降级（不裸抛）', async () => {
+    mkdirSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'node_modules', '@scope', 'pkg'), { recursive: true })
+    writeFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'node_modules', '@scope', 'pkg', 'package.json'),
+      JSON.stringify({ name: '@scope/pkg', version: '1.0.0' }))
+    const { impl } = fakeSpawnImpl()
+    const pm = createPluginManager({ nodePath: 'node.exe', dshEntry: 'dsh.js', dshHome: join(baseDir, 'dsh-home'), env: { PATH: 'C:/bin' }, spawnImpl: impl })
+    const svc = createPluginService({ nodePath: 'node.exe', dshEntry: 'dsh.js', dshHome: join(baseDir, 'dsh-home'), env: { PATH: 'C:/bin' }, runDumpConfigImpl: async () => [] })
+    const res = await svc.install('@scope/pkg', pm)
+    expect(res.ok).toBe(true)
+    expect(res.needsRestart).toBe(true) // scoped 名不能做 insert id → 降级重启
+    const patch = readFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'cordis.patch.yml'), 'utf8')
+    expect(patch).toBe('[]\n') // 未写 insert 行
+  })
+
   it('remove 拒绝 in-box 核心组件', async () => {
     const svc = createPluginService({ nodePath: 'node.exe', dshEntry: 'dsh.js', dshHome: join(baseDir, 'dsh-home'), env: { PATH: 'C:/bin' }, runDumpConfigImpl: async () => [] })
     const res = await svc.remove('@deepseek-ai/dsh-base', null)

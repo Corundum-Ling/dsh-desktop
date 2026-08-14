@@ -23,13 +23,21 @@ function report() {
   ipcRenderer.send('theme:probe', theme)
 }
 
-if (document.body) {
+// 挂载逻辑：首报 + 挂 MutationObserver。preload 执行早于 DOM 构建，
+// body 通常为 null，必须等 DOMContentLoaded 后再挂 observer（事件驱动通道），
+// 否则只剩轮询兜底
+function mount() {
+  if (!document.body) return
   report()
   new MutationObserver(report).observe(document.body, {
     attributes: true,
     attributeFilter: ['data-ds-dark-theme'],
   })
+}
+
+if (document.body) {
+  mount()
 } else {
-  document.addEventListener('DOMContentLoaded', report)
+  document.addEventListener('DOMContentLoaded', mount)
 }
 setInterval(report, 2000)

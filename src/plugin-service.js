@@ -109,9 +109,15 @@ export function createPluginService({ nodePath, dshEntry, dshHome, env, profile 
     }
     if (pkg) {
       // 非 bundle：写 insert 行实时挂载
-      const patch = readPatch()
-      writePatch(patchPath(), addInsertRow(patch, pkg.name, pkg.name))
-      return { ok: true, output: res.output, needsRestart: false }
+      // scoped 包名（@scope/pkg）不满足 entry id 安全字符集（patch-manager 校验），
+      // 此时不能裸抛（渲染层无 catch → uncaught）；降级为保守 needsRestart 路径
+      try {
+        const patch = readPatch()
+        writePatch(patchPath(), addInsertRow(patch, pkg.name, pkg.name))
+        return { ok: true, output: res.output, needsRestart: false }
+      } catch {
+        return { ok: true, output: res.output, needsRestart: true }
+      }
     }
     return { ok: true, output: res.output, needsRestart: true } // 未知类型，保守重启
   }

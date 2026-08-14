@@ -130,7 +130,7 @@ installBtn.onclick = async () => {
   outputEl.textContent = res.output
   setBusy(false)
   if (res.ok) {
-    setStatus(res.needsRestart ? '安装成功（bundle 插件，点击此处重启生效——见状态提示）' : '安装成功，已实时挂载')
+    setStatus(res.needsRestart ? '安装成功（bundle 插件，重启生效——可在环境管理切换或重开应用）' : '安装成功，已实时挂载')
   } else {
     setStatus('安装失败（见下方输出）', true)
   }
