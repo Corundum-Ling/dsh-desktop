@@ -37,12 +37,18 @@ async function startDsh(config) {
     app.exit(1)
     return null
   }
+  // TOCTOU 守卫：退出窗口恰在 findFreePort 与 spawn 之间置位时，
+  // 放弃本次启动，避免新 spawn 的 dsh 无人停止成为孤儿（.then 已有 svc 空判兜底）
+  if (quitting) return null
   config.set('port', port)
 
   const { nodePath, pnpmBinDir, dshEntry } = resourcePaths()
   mkdirSync(config.logsDir(), { recursive: true })
   logStream?.end()
   logStream = createWriteStream(join(config.logsDir(), 'dsh.log'), { flags: 'a' })
+  // write-after-end 守卫：kill 后 stdio 滞留数据在 end() 之后送达会触发
+  // ERR_STREAM_WRITE_AFTER_END（真实 dsh 持续输出时高概率），noop 消除 uncaught
+  logStream.on('error', () => {})
   const fullEnv = buildEnv({ DSH_HOME: config.dshHome(), binDir: pnpmBinDir })
 
   service = new DshService({
@@ -61,6 +67,7 @@ async function startDsh(config) {
       startDsh(config).then((svc) => {
         if (svc && mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(`http://127.0.0.1:${svc.port}/`)
       }).catch((err) => {
+        if (quitting) return // 退出中不弹窗不写流
         logStream.write(`\n[dsh-desktop] dsh restart #${restartCount} failed: ${err.message}\n`)
         if (restartCount >= 2) {
           dialog.showErrorBox('dsh 重启失败', `${err.message}\n\n日志位置: ${join(config.logsDir(), 'dsh.log')}`)
