@@ -1,7 +1,7 @@
 import { app, BrowserWindow, Menu, dialog, ipcMain, shell } from 'electron'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createWriteStream, mkdirSync } from 'node:fs'
+import { createWriteStream, mkdirSync, readFileSync } from 'node:fs'
 import { createConfig } from './src/config.js'
 import { findFreePort, waitForPort } from './src/port-waiter.js'
 import { DshService } from './src/dsh-service.js'
@@ -40,10 +40,20 @@ function themeValue(name, fallback) {
   return themeState.variables?.[name] || fallback
 }
 
-function syncChildWindowChrome(win) {
+function titleBarOverlay() {
+  return {
+    color: themeValue('--dsw-alias-bg-layer-1', '#ffffff'),
+    symbolColor: themeValue('--dsw-alias-label-primary', '#0f1115'),
+    height: 40,
+  }
+}
+
+function syncWindowChrome(win) {
   if (!win || win.isDestroyed()) return
   const background = themeValue('--dsw-alias-bg-base', '#ffffff')
   win.setBackgroundColor(background)
+  win.setTitleBarOverlay(titleBarOverlay())
+  if (process.platform === 'win32') win.setAccentColor(background)
 }
 
 function resourcePaths() {
@@ -112,10 +122,33 @@ function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1280, height: 800,
     title: 'DeepSeek Harness',
+    show: false,
+    backgroundColor: themeValue('--dsw-alias-bg-base', '#ffffff'),
+    accentColor: themeValue('--dsw-alias-bg-base', '#ffffff'),
+    titleBarStyle: 'hidden',
+    titleBarOverlay: titleBarOverlay(),
     webPreferences: {
       contextIsolation: true, nodeIntegration: false,
       preload: join(__dirname, 'theme-probe.cjs'),
     },
+  })
+  const titlebarCss = readFileSync(join(__dirname, 'main-window.css'), 'utf8')
+  let resolveInitialChrome
+  const initialChromeReady = new Promise((resolve) => { resolveInitialChrome = resolve })
+  let firstDocument = true
+  mainWindow.webContents.on('dom-ready', async () => {
+    try {
+      await mainWindow.webContents.insertCSS(titlebarCss)
+    } finally {
+      if (firstDocument) {
+        firstDocument = false
+        resolveInitialChrome()
+      }
+    }
+  })
+  mainWindow.once('ready-to-show', async () => {
+    await initialChromeReady
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show()
   })
   mainWindow.loadURL(`http://127.0.0.1:${service.port}/`)
   mainWindow.on('closed', () => { mainWindow = null })
@@ -142,10 +175,9 @@ function openChildWindow(kind) {
     parent: mainWindow,
     show: false,
     backgroundColor: themeValue('--dsw-alias-bg-base', '#ffffff'),
-    frame: false,
-    // Windows 的 WS_THICKFRAME 会让 DWM 在开关窗口时做淡入淡出，150% 缩放下尤为明显。
-    // 关闭后不再有系统动画；代价是 Windows 上不支持拖拽边缘缩放。
-    thickFrame: process.platform !== 'win32',
+    accentColor: themeValue('--dsw-alias-bg-base', '#ffffff'),
+    titleBarStyle: 'hidden',
+    titleBarOverlay: titleBarOverlay(),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -283,22 +315,19 @@ if (!gotLock) {
     // 手动/自动重启当前 dsh（#1 用户反馈：bundle 插件装/卸后需要重启生效，
     // v2 重构曾移除该通道导致"无法热插拔"）
     ipcMain.handle('dsh:restart', () => globalThis.__restartDsh())
-    ipcMain.on('window:minimize', (event) => BrowserWindow.fromWebContents(event.sender)?.minimize())
-    ipcMain.on('window:toggle-maximize', (event) => {
-      const win = BrowserWindow.fromWebContents(event.sender)
-      if (!win) return
-      if (win.isMaximized()) win.unmaximize()
-      else win.maximize()
+    ipcMain.on('window:open', (event, kind) => {
+      if (event.sender !== mainWindow?.webContents) return
+      if (kind === 'plugin' || kind === 'marketplace' || kind === 'env') openChildWindow(kind)
     })
-    ipcMain.on('window:close', (event) => BrowserWindow.fromWebContents(event.sender)?.close())
     ipcMain.handle('theme:get', () => themeState)
     // 主题广播：主窗口探针上报（MutationObserver + 2s 轮询兜底），实时推给所有子窗口
     // （通道名 'theme:changed' 与 preload.cjs 的 themeApi.onChange 契约一致）
     ipcMain.on('theme:probe', (_e, theme) => {
       themeState = theme
+      syncWindowChrome(mainWindow)
       for (const [kind, win] of Object.entries(childWindows)) {
         if (win && !win.isDestroyed()) {
-          syncChildWindowChrome(win)
+          syncWindowChrome(win)
           win.webContents.send('theme:changed', theme)
         }
       }

@@ -14,8 +14,8 @@ files:
   - marketplace-window.js
   - env-window.html
   - env-window.js
+  - main-window.css
   - theme-applier.js
-  - window-controls.js
   - theme-probe.cjs
   - window-theme.css
   - src/**

@@ -28,6 +28,29 @@ function report() {
 // 否则只剩轮询兜底
 function mount() {
   if (!document.body) return
+  if (!document.getElementById('dsh-desktop-titlebar')) {
+    const titlebar = document.createElement('div')
+    titlebar.id = 'dsh-desktop-titlebar'
+    const title = document.createElement('span')
+    title.className = 'dsh-desktop-titlebar-title'
+    title.textContent = 'DeepSeek Harness'
+    const nav = document.createElement('nav')
+    nav.className = 'dsh-desktop-titlebar-nav'
+    nav.setAttribute('aria-label', '桌面管理')
+    for (const [kind, label] of [
+      ['plugin', '插件管理'],
+      ['marketplace', '插件市场'],
+      ['env', '环境管理'],
+    ]) {
+      const button = document.createElement('button')
+      button.type = 'button'
+      button.textContent = label
+      button.addEventListener('click', () => ipcRenderer.send('window:open', kind))
+      nav.append(button)
+    }
+    titlebar.append(title, nav)
+    document.body.prepend(titlebar)
+  }
   report()
   new MutationObserver(report).observe(document.body, {
     attributes: true,

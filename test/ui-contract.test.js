@@ -26,7 +26,6 @@ describe('secondary window UI contract', () => {
     const source = read(html)
     for (const id of ids) expect(source).toContain(`id="${id}"`)
     expect(source).toContain('href="./window-theme.css"')
-    expect(source).toContain('src="./window-controls.js"')
     expect(source).toContain('src="./theme-applier.js"')
   })
 
@@ -48,7 +47,7 @@ describe('secondary window UI contract', () => {
     const assets = [
       ...windows.flatMap(({ html, script }) => [html, script]),
       'window-theme.css',
-      'window-controls.js',
+      'main-window.css',
       'theme-applier.js',
       'theme-probe.cjs',
     ]
@@ -60,14 +59,16 @@ describe('secondary window UI contract', () => {
     expect(main).toContain('show: false')
     expect(main).toContain("once('ready-to-show'")
     expect(main).toContain('window.__contentReadyPromise')
-    expect(main).toContain('frame: false')
-    expect(main).toContain("thickFrame: process.platform !== 'win32'")
+    expect(main).toContain("titleBarStyle: 'hidden'")
+    expect(main).toContain('titleBarOverlay: titleBarOverlay()')
     expect(main).not.toContain('modal: true')
-    expect(main).not.toContain('titleBarOverlay:')
     expect(read('theme-applier.js')).toContain('requestAnimationFrame(() => requestAnimationFrame(resolve))')
     for (const { script } of windows) expect(read(script)).toContain('window.__contentReadyPromise =')
-    expect(read('window-theme.css')).toContain('-webkit-app-region: drag')
-    expect(read('preload.cjs')).toContain("ipcRenderer.send('window:close')")
+    expect(read('window-theme.css')).toContain('env(titlebar-area-width, 100%)')
+    expect(read('main-window.css')).toContain('-webkit-app-region: drag')
+    expect(read('theme-probe.cjs')).toContain("titlebar.id = 'dsh-desktop-titlebar'")
+    expect(read('theme-probe.cjs')).toContain("ipcRenderer.send('window:open', kind)")
+    expect(main).toContain("ipcMain.on('window:open'")
   })
 
   it('renders plugin ownership groups as accessible collapsible controls', () => {
