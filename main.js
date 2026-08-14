@@ -11,9 +11,12 @@ import { buildEnv } from './src/main-env.js'
 // ESM 下没有全局 __dirname，用 import.meta.url 推导
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-const RESOURCES_DIR = process.env.DSH_DESKTOP_DEV === '1'
-  ? join(process.cwd(), 'resources')
-  : join(process.resourcesPath, 'resources')
+// 开发/打包双路径：app.isPackaged 为标准判断（开发模式 npm start 自动走项目 resources，
+// 打包后走安装目录 resources）。旧方案依赖 DSH_DESKTOP_DEV 环境变量，但 start script
+// 不设置它导致 npm start 必现 ENOENT
+const RESOURCES_DIR = app.isPackaged
+  ? join(process.resourcesPath, 'resources')
+  : join(app.getAppPath(), 'resources')
 
 const nodePath = join(RESOURCES_DIR, 'node', 'node.exe')
 const pnpmBinDir = join(RESOURCES_DIR, 'bin')
