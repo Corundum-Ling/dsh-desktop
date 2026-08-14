@@ -27,7 +27,7 @@ jobs:
         run: npm run prepare:resources
 
       - name: 构建安装包（自动执行发布门禁）
-        run: npm run dist
+        run: npm run dist -- --publish never
 
       - name: 生成 SHA-256
         shell: pwsh
