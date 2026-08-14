@@ -87,33 +87,6 @@ Current constraints:
 
 Back up `%APPDATA%\DeepSeekHarness\dsh-home\profiles\` before destructive operations.
 
-## Privacy and local data
-
-Application data is stored under `%APPDATA%\DeepSeekHarness\`:
-
-| Path | Contents |
-|---|---|
-| `config.json` | Desktop wrapper settings |
-| `logs\dsh.log` | dsh standard output and error log |
-| `marketplace-cache\marketplace.json` | Plugin marketplace cache |
-| `dsh-home\.credentials.yaml` | Model credentials |
-| `dsh-home\profiles\` | Profile settings, plugins, and dependencies |
-| `dsh-home\storages\` | Sessions and upstream dsh storage |
-
-Model credentials are stored in a local file. They are not protected by Windows Credential Manager or DPAPI. Do not upload the complete `%APPDATA%\DeepSeekHarness\` directory to an issue tracker, cloud drive, or public log. `dsh.log`, sessions, caches, and Chromium data may also contain file paths, command output, or other private content.
-
-The uninstaller does not remove this data. To remove everything, exit the application, back up any profiles you need, and then delete `%APPDATA%\DeepSeekHarness\` manually.
-
-### Network requests and telemetry
-
-- Model requests go to the provider configured by the user.
-- The marketplace reads `awesome-dsh-plugins` from GitHub.
-- Plugin installation may access npm, GitHub, or a Git URL supplied by the user.
-- The bundled dsh profile disables telemetry by default.
-- An external `DSH_TELEMETRY_MODE` environment variable can change upstream telemetry behavior; `DSH_TELEMETRY_DISABLED` can force telemetry off.
-
-When full upstream telemetry is enabled, messages, tool arguments, tool results, command output, file content, and local paths may be included. Read the upstream documentation and confirm your organization's data policy before enabling it.
-
 ## Known limitations
 
 - Windows x64 only.
@@ -127,31 +100,6 @@ When full upstream telemetry is enabled, messages, tool arguments, tool results,
 - Closing every application window stops the local dsh service; there is no tray mode.
 
 Back up `%APPDATA%\DeepSeekHarness\` before upgrades or resets.
-
-## Troubleshooting
-
-### SmartScreen blocks installation
-
-Confirm that the installer came from the project release and verify its SHA-256. The current build is unsigned, so Windows reports an unknown publisher.
-
-### dsh fails to start
-
-1. Check whether every port from `3080` through `3090` is occupied.
-2. Read `%APPDATA%\DeepSeekHarness\logs\dsh.log`.
-3. Stop stale DeepSeek Harness or bundled Node processes and try again.
-
-### Plugin installation fails
-
-Check the network, npm/Git source, and the output panel. A plugin operation times out after 120 seconds by default. Community plugins may not be compatible with the bundled dsh RC.
-
-### Safe reset
-
-1. Exit the application.
-2. Back up `%APPDATA%\DeepSeekHarness\dsh-home\profiles\` and any required sessions.
-3. Move `%APPDATA%\DeepSeekHarness\` to another location.
-4. Start the application to create a clean data directory.
-
-Delete the backup manually only after confirming it is no longer needed. Do not clear user data without a backup.
 
 ## Development
 
@@ -185,16 +133,6 @@ test/                   Vitest tests
 ```
 
 The main process starts the bundled dsh service and loads its Web UI into the primary window. Three local management windows call main-process services through a constrained preload API. See [`docs/architecture/renderer-contract.md`](docs/architecture/renderer-contract.md) for the detailed boundary.
-
-## Release checklist
-
-1. Synchronize the version in `package.json` and component versions in `scripts/prepare-resources.mjs`.
-2. Prepare the runtime from a clean `resources/` directory.
-3. Run `npm test`, `npm run check:release`, `npm run smoke:install`, and real install/uninstall checks. The gate scans the actual packaged inputs, including Git-ignored resources.
-4. Run `npm run dist`.
-5. Verify icons for the executable, installer, shortcuts, and uninstaller.
-6. Confirm that Git and the installer contain no `.superpowers` data, credentials, cookies, logs, or user data.
-7. Generate the installer SHA-256 and include it in the release.
 
 ## License and attribution
 

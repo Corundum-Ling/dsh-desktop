@@ -87,33 +87,6 @@ DeepSeek Harness 是本地 Agent 系统，不是只读聊天客户端。根据�
 
 操作前建议备份 `%APPDATA%\DeepSeekHarness\dsh-home\profiles\`。
 
-## 隐私与本地数据
-
-应用数据保存在 `%APPDATA%\DeepSeekHarness\`：
-
-| 路径 | 内容 |
-|---|---|
-| `config.json` | 桌面封装配置 |
-| `logs\dsh.log` | dsh 标准输出和错误日志 |
-| `marketplace-cache\marketplace.json` | 插件市场缓存 |
-| `dsh-home\.credentials.yaml` | 模型凭证 |
-| `dsh-home\profiles\` | profile 配置、插件和依赖 |
-| `dsh-home\storages\` | 会话及上游 dsh 存储 |
-
-模型凭证保存在本机文件中，不使用 Windows Credential Manager 或 DPAPI 加密。不要把整个 `%APPDATA%\DeepSeekHarness\` 上传到 Issue、网盘或公开日志。`dsh.log`、会话、缓存和 Chromium 数据也可能包含文件路径、命令输出或其他敏感内容。
-
-卸载程序不会删除这些数据。彻底清除前先退出应用并备份需要保留的 profile，然后手动删除 `%APPDATA%\DeepSeekHarness\`。
-
-### 网络请求与遥测
-
-- 模型请求发送到你配置的模型提供方。
-- 插件市场读取 GitHub 上的 `awesome-dsh-plugins`。
-- 插件安装可能访问 npm、GitHub 或你输入的 Git 地址。
-- 内置 dsh profile 默认关闭遥测。
-- 外部环境变量 `DSH_TELEMETRY_MODE` 可以改变上游遥测行为；`DSH_TELEMETRY_DISABLED` 可强制关闭遥测。
-
-启用上游完整遥测时，消息、工具参数、工具结果、命令输出、文件内容和本地路径可能进入遥测数据。请在启用前阅读上游文档并确认组织的数据政策。
-
 ## 已知限制
 
 - 仅支持 Windows x64。
@@ -127,31 +100,6 @@ DeepSeek Harness 是本地 Agent 系统，不是只读聊天客户端。根据�
 - 关闭所有应用窗口会停止本地 dsh 服务，不提供托盘常驻。
 
 升级或重置前请备份 `%APPDATA%\DeepSeekHarness\`。
-
-## 故障排查
-
-### SmartScreen 阻止安装
-
-确认安装器来自项目 Release，并核对 SHA-256。安装包未签名，因此 Windows 会显示未知发布者。
-
-### dsh 启动失败
-
-1. 检查 `3080-3090` 是否全部被占用。
-2. 打开 `%APPDATA%\DeepSeekHarness\logs\dsh.log` 查看错误。
-3. 结束残留的 DeepSeek Harness 或内置 Node 进程后重试。
-
-### 插件安装失败
-
-检查网络、npm/Git 地址和输出区日志。单次插件操作的默认超时为 120 秒。社区插件与当前 dsh RC 版本可能不兼容。
-
-### 安全重置
-
-1. 退出应用。
-2. 备份 `%APPDATA%\DeepSeekHarness\dsh-home\profiles\` 和需要的会话。
-3. 将 `%APPDATA%\DeepSeekHarness\` 移到其他位置。
-4. 重新启动应用生成干净数据目录。
-
-确认不再需要备份后再手动删除。不要在未备份时直接清空用户数据。
 
 ## 开发
 
@@ -185,16 +133,6 @@ test/                   Vitest 测试
 ```
 
 主进程启动内置 dsh，并将上游 Web UI 加载到主窗口。三个本地管理窗口通过受限的 preload API 调用主进程服务。详细边界见 [`docs/architecture/renderer-contract.md`](docs/architecture/renderer-contract.md)。
-
-## 发版检查
-
-1. 同步 `package.json` 版本和 `scripts/prepare-resources.mjs` 中的组件版本。
-2. 从干净的 `resources/` 重新准备运行时。
-3. 运行 `npm test`、`npm run check:release`、`npm run smoke:install` 和真实安装/卸载检查；门禁会扫描包括 Git 忽略资源在内的实际打包输入。
-4. 运行 `npm run dist`。
-5. 确认 EXE、安装器、快捷方式和卸载器图标。
-6. 确认 Git 和安装包中没有 `.superpowers`、凭证、Cookie、日志或用户数据。
-7. 生成安装器 SHA-256 并写入 Release。
 
 ## 许可证与归属
 
