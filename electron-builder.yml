@@ -15,6 +15,7 @@ files:
   - env-window.html
   - env-window.js
   - theme-applier.js
+  - window-controls.js
   - theme-probe.cjs
   - window-theme.css
   - src/**

@@ -232,4 +232,4 @@ newNameEl.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') createBtn.click()
 })
 
-refresh()
+window.__contentReadyPromise = refresh()

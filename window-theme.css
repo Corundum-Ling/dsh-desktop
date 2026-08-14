@@ -178,7 +178,7 @@ input[type='text']:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  padding: 15px max(24px, calc(100% - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100%) + 12px)) 14px 24px;
+  padding: 15px 12px 14px 24px;
   border-bottom: 1px solid var(--dsw-alias-border-l2);
   background: var(--dsw-alias-bg-layer-1);
   -webkit-app-region: drag;
@@ -186,6 +186,36 @@ input[type='text']:focus-visible {
 
 .topbar .status {
   -webkit-app-region: no-drag;
+}
+
+.window-controls {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  display: flex;
+  margin: -15px -12px 0 0;
+  -webkit-app-region: no-drag;
+}
+
+button.window-control {
+  width: 46px;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--dsw-window-transparent);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 15px;
+  font-weight: 400;
+}
+
+button.window-control:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+button.window-control.close:hover:not(:disabled) {
+  background: var(--dsw-alias-state-error-primary);
+  color: var(--dsw-alias-label-primary-foreground);
 }
 
 .title-block {
@@ -666,7 +696,7 @@ pre.output {
     align-items: flex-start;
     gap: 12px;
     padding-left: 18px;
-    padding-right: max(18px, calc(100% - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100%) + 8px));
+    padding-right: 12px;
   }
 
   .status {

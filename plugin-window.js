@@ -296,4 +296,4 @@ specEl.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') installBtn.click()
 })
 
-refresh()
+window.__contentReadyPromise = refresh()

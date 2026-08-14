@@ -132,4 +132,4 @@ function render() {
 
 searchEl.oninput = render
 refreshBtn.onclick = () => loadMarketplace(true)
-loadMarketplace()
+window.__contentReadyPromise = loadMarketplace()

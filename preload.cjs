@@ -22,3 +22,9 @@ contextBridge.exposeInMainWorld('themeApi', {
     ipcRenderer.on('theme:changed', (_e, theme) => cb(theme))
   },
 })
+
+contextBridge.exposeInMainWorld('windowApi', {
+  minimize: () => ipcRenderer.send('window:minimize'),
+  toggleMaximize: () => ipcRenderer.send('window:toggle-maximize'),
+  close: () => ipcRenderer.send('window:close'),
+})

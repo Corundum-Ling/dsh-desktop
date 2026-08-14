@@ -40,20 +40,10 @@ function themeValue(name, fallback) {
   return themeState.variables?.[name] || fallback
 }
 
-function titleBarOverlay() {
-  return {
-    color: themeValue('--dsw-alias-bg-layer-1', '#ffffff'),
-    symbolColor: themeValue('--dsw-alias-label-primary', '#0f1115'),
-    height: 40,
-  }
-}
-
 function syncChildWindowChrome(win) {
   if (!win || win.isDestroyed()) return
   const background = themeValue('--dsw-alias-bg-base', '#ffffff')
   win.setBackgroundColor(background)
-  win.setTitleBarOverlay(titleBarOverlay())
-  if (process.platform === 'win32') win.setAccentColor(background)
 }
 
 function resourcePaths() {
@@ -152,11 +142,10 @@ function openChildWindow(kind) {
     parent: mainWindow,
     show: false,
     backgroundColor: themeValue('--dsw-alias-bg-base', '#ffffff'),
-    accentColor: themeValue('--dsw-alias-bg-base', '#ffffff'),
-    titleBarStyle: 'hidden',
-    titleBarOverlay: titleBarOverlay(),
-    // 模态（#3 用户反馈）：打开二级窗口后主窗口不可操作，行为统一
-    modal: true,
+    frame: false,
+    // Windows 的 WS_THICKFRAME 会让 DWM 在开关窗口时做淡入淡出，150% 缩放下尤为明显。
+    // 关闭后不再有系统动画；代价是 Windows 上不支持拖拽边缘缩放。
+    thickFrame: process.platform !== 'win32',
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -172,9 +161,13 @@ function openChildWindow(kind) {
   childWindow.webContents.on('did-finish-load', () => {
     childWindow.webContents.send('theme:changed', themeState)
   })
-  // Chromium 和动态主题都准备好后才显示，避免默认白底/原生标题栏先闪一帧。
+  // Chromium、动态主题和首批业务数据都准备好后才显示，避免空列表先闪一帧。
   childWindow.once('ready-to-show', async () => {
-    try { await childWindow.webContents.executeJavaScript('window.__themeReadyPromise') } catch {}
+    try {
+      await childWindow.webContents.executeJavaScript(
+        'Promise.all([window.__themeReadyPromise, window.__contentReadyPromise])',
+      )
+    } catch {}
     if (!childWindow.isDestroyed()) childWindow.show()
   })
   childWindow.on('closed', () => { childWindows[kind] = null })
@@ -290,6 +283,14 @@ if (!gotLock) {
     // 手动/自动重启当前 dsh（#1 用户反馈：bundle 插件装/卸后需要重启生效，
     // v2 重构曾移除该通道导致"无法热插拔"）
     ipcMain.handle('dsh:restart', () => globalThis.__restartDsh())
+    ipcMain.on('window:minimize', (event) => BrowserWindow.fromWebContents(event.sender)?.minimize())
+    ipcMain.on('window:toggle-maximize', (event) => {
+      const win = BrowserWindow.fromWebContents(event.sender)
+      if (!win) return
+      if (win.isMaximized()) win.unmaximize()
+      else win.maximize()
+    })
+    ipcMain.on('window:close', (event) => BrowserWindow.fromWebContents(event.sender)?.close())
     ipcMain.handle('theme:get', () => themeState)
     // 主题广播：主窗口探针上报（MutationObserver + 2s 轮询兜底），实时推给所有子窗口
     // （通道名 'theme:changed' 与 preload.cjs 的 themeApi.onChange 契约一致）

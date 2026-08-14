@@ -12,6 +12,11 @@
       <h1>插件市场</h1>
     </div>
     <div id="status" class="status" role="status" aria-live="polite"></div>
+    <div class="window-controls" aria-label="窗口控制">
+      <button class="window-control" type="button" data-window-action="minimize" aria-label="最小化">&#8722;</button>
+      <button class="window-control" type="button" data-window-action="maximize" aria-label="最大化">&#9633;</button>
+      <button class="window-control close" type="button" data-window-action="close" aria-label="关闭">&#10005;</button>
+    </div>
   </header>
   <main class="content">
     <div class="content-inner">
@@ -38,6 +43,7 @@
       <pre class="output" id="output" aria-label="安装输出" tabindex="0" hidden></pre>
     </div>
   </main>
+  <script src="./window-controls.js"></script>
   <script src="./marketplace-window.js"></script>
   <script src="./theme-applier.js"></script>
 </body>

@@ -52,4 +52,5 @@ npm run dist                # 构建 NSIS 安装包
 
 - 仅 Windows x64
 - 未签名（SmartScreen 会提示"未知发布者"）
+- 为避免 Windows DWM 在二级窗口开关时产生闪烁，二级窗口不支持拖拽边缘缩放；仍可使用标题栏按钮最大化和还原
 - dsh 为 developer preview，新版本可能有破坏性变更——升级前备份 `%APPDATA%/DeepSeekHarness/`
