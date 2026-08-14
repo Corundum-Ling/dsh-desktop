@@ -1,0 +1,36 @@
+appId: com.corundum.dsh-desktop
+productName: DeepSeek Harness
+copyright: MIT
+
+directories:
+  output: dist
+
+files:
+  - main.js
+  - preload.cjs
+  - plugin-window.html
+  - plugin-window.js
+  - src/**
+
+# node.exe / pnpm.exe / dsh 必须为磁盘真实文件（asar 虚拟文件系统无法被外部 node.exe 读取）
+extraResources:
+  - from: resources
+    to: resources
+    filter:
+      - node/node.exe
+      - bin/pnpm.exe
+      - "dsh/**"
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: DeepSeek Harness
+
+npmRebuild: false
