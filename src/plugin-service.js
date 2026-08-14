@@ -70,7 +70,7 @@ export function createPluginService({ nodePath, dshEntry, dshHome, env, profile 
         if (!removed) return { ok: false, output: `insert 行 ${entryId} 不存在` }
         writePatch(patchPath(), content)
       }
-      return { ok: true, output: enabled ? '已启用' : '已禁用（HMR 即时生效）' }
+      return { ok: true, output: enabled ? '已启用' : '已禁用' }
     }
     if (isBundleRow) {
       const next = enabled

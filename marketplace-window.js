@@ -61,12 +61,12 @@ function render() {
         statusEl.textContent = '安装成功（bundle），正在重启 dsh...'
         try {
           await window.pluginApi.restart()
-          statusEl.textContent = '重启完成，插件已生效'
+          statusEl.textContent = '重启完成（插件效果请以 dsh UI 实际表现为准）'
         } catch (err) {
           statusEl.textContent = `重启失败: ${err.message}（可稍后重开应用）`
         }
       } else {
-        statusEl.textContent = res.ok ? '安装成功（已实时挂载）' : '安装失败（见输出）'
+        statusEl.textContent = res.ok ? '安装完成（效果请以 dsh UI 实际表现为准）' : '安装失败（见输出）'
       }
     }
     card.append(h, desc, meta, install)

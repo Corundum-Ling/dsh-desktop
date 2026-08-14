@@ -15,7 +15,7 @@ DeepSeek Harness 的 Windows 桌面封装（Electron）。免安装 Node.js，�
 
 **内置插件管理器**（顶部菜单：插件管理 / 插件市场 / 环境管理）：
 
-- **插件管理**：按 bundle 分组查看所有插件行，行级启停开关（**HMR 即时生效，零重启**）；安装 npm/git 插件（bundle 插件装后一键重启，非 bundle 插件实时挂载）；卸载（核心组件 base/web-app/headless 受保护不可卸载）
+- **插件管理**：按 bundle 分组查看所有插件行，行级启停开关（配置写入后自动重启生效）；安装 npm/git 插件（bundle 插件装后自动重启；非 bundle 插件写入挂载配置——当前 dsh 版本可能无法运行时激活，安装输出会如实提示）；卸载（核心组件 base/web-app/headless 受保护不可卸载）
 - **插件市场**：浏览 awesome-dsh-plugins 收录的社区插件（✅ 已验证 / 待测），搜索、一键安装
 - **环境管理**：多 profile 管理（创建/重命名/删除/复制）与切换启动
 

@@ -136,7 +136,7 @@ async function refresh() {
             setStatus(`${ins.name} ${cb.checked ? '已启用' : '已禁用'}，正在重启 dsh...`)
             try {
               await window.pluginApi.restart()
-              setStatus(`${ins.name} ${cb.checked ? '已启用' : '已禁用'}（重启生效）`)
+              setStatus(`${ins.name} ${cb.checked ? '已启用' : '已禁用'}（配置已写入）`)
             } catch (err) {
               setStatus(`重启失败: ${err.message}（可稍后重开应用）`, true)
             }
@@ -185,12 +185,12 @@ installBtn.onclick = async () => {
       setStatus('安装成功（bundle 插件），正在重启 dsh...')
       try {
         await window.pluginApi.restart()
-        setStatus('重启完成，插件已生效')
+        setStatus('重启完成（插件效果请以 dsh UI 实际表现为准）')
       } catch (err) {
         setStatus(`重启失败: ${err.message}（可稍后重开应用）`, true)
       }
     } else {
-      setStatus('安装成功，已实时挂载')
+      setStatus('安装完成（效果请以 dsh UI 实际表现为准）')
     }
   } else {
     setStatus('安装失败（见下方输出）', true)
