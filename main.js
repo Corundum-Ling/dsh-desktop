@@ -115,7 +115,13 @@ function createMainWindow() {
 // 无菜单栏 + parent 附属主窗口（关主窗口子窗口跟着关），按 kind 单例复用
 function openChildWindow(kind) {
   const win = childWindows[kind]
-  if (win && !win.isDestroyed()) { win.focus(); return }
+  if (win && !win.isDestroyed()) {
+    // 菜单视觉反馈：已开窗口聚焦 + 任务栏闪烁提示（#4 用户反馈）
+    win.focus()
+    win.flashFrame(true)
+    setTimeout(() => { try { win.flashFrame(false) } catch { /* 窗口可能已关闭 */ } }, 800)
+    return
+  }
   const conf = {
     plugin: { width: 720, height: 800, file: 'plugin-window.html' },
     marketplace: { width: 900, height: 760, file: 'marketplace-window.html' },
@@ -124,6 +130,8 @@ function openChildWindow(kind) {
   childWindows[kind] = new BrowserWindow({
     ...conf, title: { plugin: '插件管理', marketplace: '插件市场', env: '环境管理' }[kind],
     parent: mainWindow,
+    // 模态（#3 用户反馈）：打开二级窗口后主窗口不可操作，行为统一
+    modal: true,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -248,6 +256,9 @@ if (!gotLock) {
       }
       return { ok: true }
     })
+    // 手动/自动重启当前 dsh（#1 用户反馈：bundle 插件装/卸后需要重启生效，
+    // v2 重构曾移除该通道导致"无法热插拔"）
+    ipcMain.handle('dsh:restart', () => globalThis.__restartDsh())
     ipcMain.handle('theme:get', () => themeState)
     // 主题广播：主窗口探针上报（MutationObserver + 2s 轮询兜底），实时推给所有子窗口
     // （通道名 'theme:changed' 与 preload.cjs 的 themeApi.onChange 契约一致）

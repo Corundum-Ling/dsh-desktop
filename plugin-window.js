@@ -73,7 +73,18 @@ async function refresh() {
             const res = await window.pluginApi.remove(row.name)
             outputEl.textContent = res.output
             setBusy(false)
-            setStatus(res.ok ? '已卸载（如为 bundle 需重启生效）' : '卸载失败（见输出）', !res.ok)
+            if (res.ok && res.needsRestart) {
+              // bundle 卸载后自动重启（#1 用户反馈：不会自动重启无法热插拔）
+              setStatus('已卸载，正在重启 dsh...')
+              try {
+                await window.pluginApi.restart()
+                setStatus('重启完成')
+              } catch (err) {
+                setStatus(`重启失败: ${err.message}（可稍后重开应用）`, true)
+              }
+            } else {
+              setStatus(res.ok ? '已卸载' : '卸载失败（见输出）', !res.ok)
+            }
             await refresh()
           }
           right.append(rm)
@@ -130,7 +141,18 @@ installBtn.onclick = async () => {
   outputEl.textContent = res.output
   setBusy(false)
   if (res.ok) {
-    setStatus(res.needsRestart ? '安装成功（bundle 插件，重启生效——可在环境管理切换或重开应用）' : '安装成功，已实时挂载')
+    if (res.needsRestart) {
+      // bundle 插件安装后自动重启（#1 用户反馈：不会自动重启无法热插拔）
+      setStatus('安装成功（bundle 插件），正在重启 dsh...')
+      try {
+        await window.pluginApi.restart()
+        setStatus('重启完成，插件已生效')
+      } catch (err) {
+        setStatus(`重启失败: ${err.message}（可稍后重开应用）`, true)
+      }
+    } else {
+      setStatus('安装成功，已实时挂载')
+    }
   } else {
     setStatus('安装失败（见下方输出）', true)
   }

@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('pluginApi', {
   removeProfile: (name) => ipcRenderer.invoke('profiles:remove', name),
   copyProfile: (from, to) => ipcRenderer.invoke('profiles:copy', from, to),
   switchProfile: (name) => ipcRenderer.invoke('profiles:switch', name),
+  restart: () => ipcRenderer.invoke('dsh:restart'),
 })
 
 contextBridge.exposeInMainWorld('themeApi', {

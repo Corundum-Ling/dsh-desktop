@@ -56,9 +56,18 @@ function render() {
       // git 源判定需 github: 前缀（裸 owner/repo 会被当 npm 包处理）
       const res = await window.pluginApi.install('github:' + p.repo)
       outputEl.textContent = res.output
-      statusEl.textContent = res.ok
-        ? (res.needsRestart ? '安装成功（bundle，重启生效）' : '安装成功（已实时挂载）')
-        : '安装失败（见输出）'
+      if (res.ok && res.needsRestart) {
+        // bundle 安装后自动重启（#1 用户反馈）
+        statusEl.textContent = '安装成功（bundle），正在重启 dsh...'
+        try {
+          await window.pluginApi.restart()
+          statusEl.textContent = '重启完成，插件已生效'
+        } catch (err) {
+          statusEl.textContent = `重启失败: ${err.message}（可稍后重开应用）`
+        }
+      } else {
+        statusEl.textContent = res.ok ? '安装成功（已实时挂载）' : '安装失败（见输出）'
+      }
     }
     card.append(h, desc, meta, install)
     listEl.append(card)
