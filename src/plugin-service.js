@@ -149,11 +149,19 @@ export function createPluginService({ nodePath, dshEntry, dshHome, env, profile 
       return { ok: true, output: res.output, needsRestart: true }
     }
     if (pkg) {
-      // 非 bundle：写 insert 行实时挂载；scoped 包名用 slugify 转安全 entry id
+      // 非 bundle（无 dsh.bundle manifest）：写 insert 行挂载。
+      // ⚠️ 实测（2026-08-14）：dsh rc.6 对非 bundle insert 行不运行时激活——
+      // host apply 不执行（路由 404）、client 不进 __DSH_BOOT__ 清单；
+      // 加入 bundles 层栈则 fail-loud 拒绝（"declares no dsh.bundle"）。
+      // insert 行保留（dsh 未来支持后自动生效），但如实提示当前不可用。
       try {
         const patch = readPatch()
         writePatch(patchPath(), addInsertRow(patch, slugify(pkg.name), pkg.name))
-        return { ok: true, output: res.output, needsRestart: false }
+        return {
+          ok: true,
+          output: `${res.output}\n\n⚠️ 该插件为非 bundle 插件（无 dsh.bundle manifest）。实测当前 dsh 版本无法运行时激活非 bundle insert 插件（功能不可用）。已保留挂载配置，待 dsh 上游支持后自动生效。`,
+          needsRestart: true,
+        }
       } catch (err) {
         return { ok: true, output: `已安装依赖但实时挂载失败: ${err?.message ?? err}（可手动编辑 cordis.patch.yml 或重装）`, needsRestart: false }
       }
