@@ -3,7 +3,7 @@ import { spawn } from 'node:child_process'
 import { waitForPort as defaultWait } from './port-waiter.js'
 
 export class DshService extends EventEmitter {
-  constructor({ nodePath, dshEntry, dshHome, port, env, logStream, waitForPortImpl = defaultWait, spawnImpl = spawn }) {
+  constructor({ nodePath, dshEntry, dshHome, port, env, logStream, waitForPortImpl = defaultWait, spawnImpl = spawn, profile = 'web' }) {
     super()
     this.nodePath = nodePath
     this.dshEntry = dshEntry
@@ -13,12 +13,13 @@ export class DshService extends EventEmitter {
     this.logStream = logStream
     this.waitForPort = waitForPortImpl
     this.spawnImpl = spawnImpl
+    this.profile = profile
     this.child = null
   }
 
   start() {
     return new Promise(async (resolve, reject) => {
-      const args = [this.dshEntry, '--profile', 'web', '--port', this.port]
+      const args = [this.dshEntry, '--profile', this.profile, '--port', String(this.port)]
       const child = this.spawnImpl(this.nodePath, args, {
         cwd: process.cwd(),
         env: { ...process.env, ...this.env, DSH_HOME: this.dshHome },
@@ -60,7 +61,9 @@ export class DshService extends EventEmitter {
     })
   }
 
-  async restart() {
+  async restart(profile) {
+    // profiles:switch 语义：stop 当前 service → 以新 profile 重建
+    if (profile) this.profile = profile
     await this.stop()
     this._started = false
     await this.start()

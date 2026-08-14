@@ -12,7 +12,7 @@ function makeFakeChild() {
   return child
 }
 
-function makeService({ waitForPortImpl = async () => true, child = makeFakeChild(), spawnImpl } = {}) {
+function makeService({ waitForPortImpl = async () => true, child = makeFakeChild(), spawnImpl, profile = 'web' } = {}) {
   const logs = []
   const logStream = new Writable({
     write(chunk, _enc, cb) { logs.push(String(chunk)); cb() },
@@ -22,7 +22,7 @@ function makeService({ waitForPortImpl = async () => true, child = makeFakeChild
     service: new DshService({
       nodePath: 'node.exe', dshEntry: 'dsh.js', dshHome: 'C:/dsh-home',
       port: 3080, env: { PATH: 'C:/bin' }, logStream,
-      waitForPortImpl, spawnImpl,
+      waitForPortImpl, spawnImpl, profile,
     }),
     child, logs,
   }
@@ -38,7 +38,7 @@ describe('DshService', () => {
     })
     await service.start()
     expect(seen.cmd).toBe('node.exe')
-    expect(seen.args).toEqual(['dsh.js', '--profile', 'web', '--port', 3080])
+    expect(seen.args).toEqual(['dsh.js', '--profile', 'web', '--port', '3080'])
     expect(seen.opts.cwd).toBeDefined()
     expect(seen.opts.env.DSH_HOME).toBe('C:/dsh-home')
     expect(seen.opts.env.PATH).toBe('C:/bin')
@@ -61,6 +61,30 @@ describe('DshService', () => {
     const p = service.start()
     child.emit('error', new Error('ENOENT'))
     await expect(p).rejects.toThrow(/ENOENT/)
+  })
+
+  it('支持自定义 profile', async () => {
+    const seen = {}
+    const child = makeFakeChild()
+    const { service } = makeService({
+      child, profile: 'work',
+      spawnImpl: (cmd, args, opts) => { Object.assign(seen, { args }); return child },
+    })
+    await service.start()
+    expect(seen.args).toEqual(['dsh.js', '--profile', 'work', '--port', '3080'])
+  })
+
+  it('restart 传入 profile 会切换并重建', async () => {
+    const seen = []
+    const child = makeFakeChild()
+    const { service } = makeService({
+      child,
+      spawnImpl: (cmd, args, opts) => { seen.push(args); return child },
+    })
+    await service.start()
+    await service.restart('work')
+    expect(service.profile).toBe('work')
+    expect(seen[1]).toEqual(['dsh.js', '--profile', 'work', '--port', '3080'])
   })
 
   it('stop 调用 kill 并等退出', async () => {

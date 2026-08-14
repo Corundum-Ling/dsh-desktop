@@ -6,6 +6,10 @@ import { createConfig } from './src/config.js'
 import { findFreePort, waitForPort } from './src/port-waiter.js'
 import { DshService } from './src/dsh-service.js'
 import { createPluginManager } from './src/plugin-manager.js'
+import { createPluginService } from './src/plugin-service.js'
+import { createMarketplace } from './src/marketplace.js'
+import { createProfileService } from './src/profile-service.js'
+import { runDumpConfig } from './src/dump-config.js'
 import { buildEnv } from './src/main-env.js'
 
 // ESM 下没有全局 __dirname，用 import.meta.url 推导
@@ -23,18 +27,28 @@ const pnpmBinDir = join(RESOURCES_DIR, 'bin')
 const dshEntry = join(RESOURCES_DIR, 'dsh', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
 
 let mainWindow = null
-let pluginWindow = null
+const childWindows = {}
 let service = null
 let restartCount = 0
 let logStream = null
 let quitting = false
 let manualRestart = false
+// themeState 占位（Task 9 主题同步完善其内容与广播）
+let themeState = { isDark: false, variables: {} }
 
 function resourcePaths() {
   return { nodePath, pnpmBinDir, dshEntry }
 }
 
-async function startDsh(config) {
+// 市场数据源：拉取 awesome-dsh-plugins 的 PLUGINS.md 原始内容，
+// createMarketplace 负责解析与缓存
+async function fetchPluginsMd() {
+  const res = await fetch('https://raw.githubusercontent.com/AdamPlatin123/awesome-dsh-plugins/main/PLUGINS.md')
+  if (!res.ok) throw new Error(`市场数据源 HTTP ${res.status}`)
+  return res.text()
+}
+
+async function startDsh(config, profile = 'web') {
   const port = await findFreePort(3080, 3090)
   if (port === null) {
     dialog.showErrorBox('无法启动', '端口 3080-3090 全部被占用，请关闭占用程序后重试。')
@@ -57,7 +71,7 @@ async function startDsh(config) {
 
   service = new DshService({
     nodePath, dshEntry, dshHome: config.dshHome(), port,
-    env: fullEnv, logStream, waitForPortImpl: waitForPort,
+    env: fullEnv, logStream, waitForPortImpl: waitForPort, profile,
   })
   // post-start 的 'error' 必须挂监听（如真实 spawn 后段错误），否则 uncaught
   service.on('error', (err) => {
@@ -68,7 +82,8 @@ async function startDsh(config) {
     if (restartCount < 2 && code !== 0) {
       restartCount++
       logStream.write(`\n[dsh-desktop] dsh exited (${code}), restart #${restartCount}\n`)
-      startDsh(config).then((svc) => {
+      // 崩溃重启沿用当前 profile（如用户已切到 work，崩溃后不应退回 web）
+      startDsh(config, service?.profile).then((svc) => {
         if (svc && mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(`http://127.0.0.1:${svc.port}/`)
       }).catch((err) => {
         if (quitting) return // 退出中不弹窗不写流
@@ -93,14 +108,19 @@ function createMainWindow() {
   mainWindow.on('closed', () => { mainWindow = null })
 }
 
-function createPluginWindow() {
-  if (pluginWindow && !pluginWindow.isDestroyed()) {
-    pluginWindow.focus()
-    return
-  }
-  pluginWindow = new BrowserWindow({
-    width: 640, height: 720,
-    title: '插件管理',
+// 子窗口统一管理：插件管理 / 插件市场 / 环境管理三个窗口，
+// 无菜单栏 + parent 附属主窗口（关主窗口子窗口跟着关），按 kind 单例复用
+function openChildWindow(kind) {
+  const win = childWindows[kind]
+  if (win && !win.isDestroyed()) { win.focus(); return }
+  const conf = {
+    plugin: { width: 720, height: 800, file: 'plugin-window.html' },
+    marketplace: { width: 900, height: 760, file: 'marketplace-window.html' },
+    env: { width: 640, height: 560, file: 'env-window.html' },
+  }[kind]
+  childWindows[kind] = new BrowserWindow({
+    ...conf, title: { plugin: '插件管理', marketplace: '插件市场', env: '环境管理' }[kind],
+    parent: mainWindow,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -109,34 +129,9 @@ function createPluginWindow() {
       preload: join(__dirname, 'preload.cjs'),
     },
   })
-  pluginWindow.loadFile(join(__dirname, 'plugin-window.html'))
-  pluginWindow.on('closed', () => { pluginWindow = null })
-}
-
-// 预装 dsh-web-plugin-manager（Web UI 内插件管理：市场/实时启停/环境管理）。
-// 利用 dsh plugin 命令在 profile 缺失时自动初始化的特性，在 dsh 首次启动前完成预装，
-// 一次启动即含插件、无需额外重启。失败不阻塞主流程（记日志，用户可稍后手动装）。
-const PREINSTALLED_PLUGIN = 'dsh-web-plugin-manager'
-
-async function ensurePluginManager(config, pm) {
-  if (config.get('pluginManagerInstalled', false)) return
-  mkdirSync(config.logsDir(), { recursive: true })
-  const log = createWriteStream(join(config.logsDir(), 'dsh.log'), { flags: 'a' })
-  log.on('error', () => {})
-  const stamp = new Date().toISOString()
-  try {
-    const res = await pm.installPlugin(PREINSTALLED_PLUGIN)
-    if (res.ok) {
-      config.set('pluginManagerInstalled', true)
-      log.write(`\n[dsh-desktop] ${stamp} 预装 ${PREINSTALLED_PLUGIN} 成功\n`)
-    } else {
-      log.write(`\n[dsh-desktop] ${stamp} 预装 ${PREINSTALLED_PLUGIN} 失败: ${res.output}\n`)
-    }
-  } catch (err) {
-    log.write(`\n[dsh-desktop] ${stamp} 预装 ${PREINSTALLED_PLUGIN} 异常: ${err.message}\n`)
-  } finally {
-    log.end()
-  }
+  childWindows[kind].setMenu(null)
+  childWindows[kind].loadFile(join(__dirname, conf.file))
+  childWindows[kind].on('closed', () => { childWindows[kind] = null })
 }
 
 // 锁定 userData 目录名为 %APPDATA%\DeepSeekHarness 与 spec 契约一致：
@@ -167,10 +162,18 @@ if (!gotLock) {
       dshEntry: resourcePaths().dshEntry,
       dshHome: config.dshHome(),
       env,
-      timeoutMs: 120000, // 预装与插件安装最长 2 分钟，避免网络卡住拖死启动
+      timeoutMs: 120000, // 插件安装最长 2 分钟，避免网络卡住拖死启动
     })
+    const ps = createPluginService({
+      nodePath: resourcePaths().nodePath,
+      dshEntry: resourcePaths().dshEntry,
+      dshHome: config.dshHome(),
+      env,
+      runDumpConfigImpl: runDumpConfig,
+    })
+    const mk = createMarketplace({ fetchImpl: fetchPluginsMd, cacheDir: join(config.dshHome(), '..', 'marketplace-cache') })
+    const pf = createProfileService({ dshHome: config.dshHome() })
 
-    await ensurePluginManager(config, pm)
     try {
       await startDsh(config)
     } catch (err) {
@@ -181,21 +184,24 @@ if (!gotLock) {
 
     createMainWindow()
 
+    // 菜单平铺：v2 起去掉"应用"下拉，顶层直接五项
     Menu.setApplicationMenu(Menu.buildFromTemplate([
-      { label: '应用', submenu: [
-        { label: '插件管理', click: createPluginWindow },
-        { label: '打开 dsh 日志目录', click: () => shell.openPath(join(config.logsDir())) },
-        { type: 'separator' },
-        { role: 'quit', label: '退出' },
-      ]},
+      { label: '插件管理', click: () => openChildWindow('plugin') },
+      { label: '插件市场', click: () => openChildWindow('marketplace') },
+      { label: '环境管理', click: () => openChildWindow('env') },
+      { type: 'separator' },
+      { label: '打开日志目录', click: () => shell.openPath(join(config.logsDir())) },
+      { type: 'separator' },
+      { role: 'quit', label: '退出' },
     ]))
 
     globalThis.__pluginManager = pm
-    globalThis.__restartDsh = async () => {
+    // 统一重启入口：不带参重启当前 profile；带参（profiles:switch）切换 profile 重建
+    globalThis.__restartDsh = async (profile = service?.profile ?? 'web') => {
       manualRestart = true
       restartCount = 0
       try {
-        await service.restart()
+        await service.restart(profile)
       } catch (err) {
         // 诊断埋点：手动重启失败路径原本无任何日志（错误只弹 UI），
         // 导致无法定位新进程 exit 的真实原因
@@ -209,10 +215,23 @@ if (!gotLock) {
       }
     }
 
-    ipcMain.handle('plugins:list', () => globalThis.__pluginManager.listPlugins())
-    ipcMain.handle('plugins:install', (_e, spec) => globalThis.__pluginManager.installPlugin(spec))
-    ipcMain.handle('plugins:remove', (_e, name) => globalThis.__pluginManager.removePlugin(name))
-    ipcMain.handle('dsh:restart', () => globalThis.__restartDsh())
+    ipcMain.handle('plugins:list', () => ps.list())
+    ipcMain.handle('plugins:set-enabled', (_e, entryId, enabled) =>
+      ps.setEnabled(String(entryId), enabled === true))
+    ipcMain.handle('plugins:install', (_e, spec) => ps.install(String(spec), pm))
+    ipcMain.handle('plugins:remove', (_e, name) => ps.remove(String(name), pm))
+    ipcMain.handle('plugins:remove-insert', (_e, rowId) => ps.removeInsert(String(rowId)))
+    ipcMain.handle('marketplace:get', (_e, refresh) => mk.get(refresh === true))
+    ipcMain.handle('profiles:list', () => pf.listProfiles())
+    ipcMain.handle('profiles:create', (_e, name, template) => pf.createProfile(String(name), String(template ?? 'web')))
+    ipcMain.handle('profiles:rename', (_e, oldName, newName) => pf.renameProfile(String(oldName), String(newName)))
+    ipcMain.handle('profiles:remove', (_e, name) => pf.removeProfile(String(name)))
+    ipcMain.handle('profiles:copy', (_e, from, to) => pf.copyProfile(String(from), String(to)))
+    ipcMain.handle('profiles:switch', async (_e, name) => {
+      await globalThis.__restartDsh(String(name))
+      return { ok: true }
+    })
+    ipcMain.handle('theme:get', () => themeState)
   })
 
   // 退出竞态防护：quit 链一旦开始就置位，防止 stop() 的 child.kill()
