@@ -32,7 +32,7 @@ export function createPluginService({ nodePath, dshEntry, dshHome, env, profile 
       runDumpConfigImpl({ nodePath, dshEntry, dshHome, profile, env, timeoutMs }),
       Promise.resolve(readInsertRows(readPatch())),
     ])
-    return { rows, inserts: insertRows, bundles: readBundles() }
+    return { rows: rows.map(r => ({ ...r, core: isCoreBundle(r.bundle) })), inserts: insertRows, bundles: readBundles() }
   }
 
   function isPatchTopRow(entryId) {
@@ -82,6 +82,11 @@ export function createPluginService({ nodePath, dshEntry, dshHome, env, profile 
 
   const IN_BOX = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@deepseek-ai/dsh-headless']
 
+  /** 核心判定：bundle 名可能无 scope（dump-config 注释为 dsh-web-app），归一化匹配 */
+  function isCoreBundle(bundle) {
+    return IN_BOX.some(b => bundle === b || bundle === b.split('/').pop())
+  }
+
   /** 读取已安装包 manifest；isBundle = 有 dsh.bundle 字段 */
   function readInstalledPackage(name) {
     const pkgFile = join(profileDir, 'node_modules', name, 'package.json')
@@ -117,7 +122,8 @@ export function createPluginService({ nodePath, dshEntry, dshHome, env, profile 
   }
 
   async function remove(name, pm) {
-    if (IN_BOX.includes(name)) {
+    // 双重守卫：bundle 全名直接命中，或按行 name 查 dump-config 的 bundle 归属
+    if (IN_BOX.includes(name) || await isCoreRow(name)) {
       return { ok: false, output: `${name} 是核心组件，不可卸载`, needsRestart: false }
     }
     // 先清 insert 行（若有），再走官方 remove
@@ -131,5 +137,12 @@ export function createPluginService({ nodePath, dshEntry, dshHome, env, profile 
     return { ok: res.ok, output: res.output, needsRestart: true }
   }
 
-  return { list, setEnabled, removeInsert, install, remove, patchPath, readBundles }
+  /** 按行 name（或 id）查 dump-config，判断其 bundle 是否核心 */
+  async function isCoreRow(name) {
+    const rows = await runDumpConfigImpl({ nodePath, dshEntry, dshHome, profile, env, timeoutMs })
+    const row = rows.find(r => r.name === name || r.id === name)
+    return row !== undefined && isCoreBundle(row.bundle)
+  }
+
+  return { list, setEnabled, removeInsert, install, remove, patchPath, readBundles, IN_BOX, isCoreBundle }
 }

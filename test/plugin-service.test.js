@@ -45,8 +45,29 @@ describe('createPluginService', () => {
     const svc = makeSvc()
     const view = await svc.list()
     expect(view.bundles).toEqual(['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'])
-    expect(view.rows).toEqual(rowsFixture)
+    // 行标注 core（dsh-base 属核心 bundle）
+    expect(view.rows).toEqual(rowsFixture.map(r => ({ ...r, core: true })))
     expect(view.inserts).toEqual([{ id: 'dsh-web-ui', name: 'dsh-web-ui', managed: false }])
+  })
+
+  it('list 按 bundle 归属标注 core，无 scope bundle 名归一化', async () => {
+    const svc = createPluginService({
+      nodePath: 'node.exe',
+      dshEntry: 'dsh.js',
+      dshHome: join(baseDir, 'dsh-home'),
+      env: { PATH: 'C:/bin' },
+      runDumpConfigImpl: async () => [
+        { id: 'ui', name: '@deepseek-ai/dsh-web-app', bundle: 'dsh-web-app', disabled: false },
+        { id: 'pm', name: '@deepseek-ai/dsh-web-plugin-manager', bundle: 'dsh-web-plugin-manager', disabled: false },
+        { id: 'user', name: '@user/my-plugin', bundle: '', disabled: false },
+      ],
+    })
+    const view = await svc.list()
+    expect(view.rows.map(r => [r.name, r.core])).toEqual([
+      ['@deepseek-ai/dsh-web-app', true],   // 无 scope bundle 名命中 IN_BOX
+      ['@deepseek-ai/dsh-web-plugin-manager', false], // 不在核心盒内
+      ['@user/my-plugin', false],           // 用户行无 bundle
+    ])
   })
 
   it('setEnabled 对 bundle 行写 managed disable 块', async () => {
@@ -150,5 +171,29 @@ describe('install / remove / in-box 保护', () => {
     const res = await svc.remove('@deepseek-ai/dsh-base', null)
     expect(res.ok).toBe(false)
     expect(res.output).toContain('核心组件')
+  })
+
+  it('remove 拒绝核心 bundle 行：按行 name 查 dump-config 归属（含无 scope 归一化）', async () => {
+    // 用户传行 name（非 bundle 全名），行归属 dsh-web-app（无 scope 注释）
+    const svc = createPluginService({
+      nodePath: 'node.exe', dshEntry: 'dsh.js', dshHome: join(baseDir, 'dsh-home'), env: { PATH: 'C:/bin' },
+      runDumpConfigImpl: async () => [
+        { id: 'ui', name: '@deepseek-ai/dsh-web-app', bundle: 'dsh-web-app', disabled: false },
+      ],
+    })
+    const res = await svc.remove('@deepseek-ai/dsh-web-app', null)
+    expect(res.ok).toBe(false)
+    expect(res.output).toContain('核心组件')
+  })
+
+  it('remove 非核心行放行：bundle 不在盒内 → 走 insert 清理分支', async () => {
+    const svc = createPluginService({
+      nodePath: 'node.exe', dshEntry: 'dsh.js', dshHome: join(baseDir, 'dsh-home'), env: { PATH: 'C:/bin' },
+      runDumpConfigImpl: async () => [
+        { id: 'pm', name: '@deepseek-ai/dsh-web-plugin-manager', bundle: 'dsh-web-plugin-manager', disabled: false },
+      ],
+    })
+    const res = await svc.remove('@deepseek-ai/dsh-web-plugin-manager', null)
+    expect(res.ok).toBe(true)
   })
 })

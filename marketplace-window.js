@@ -1,22 +1,10 @@
 const statusEl = document.getElementById('status')
 const searchEl = document.getElementById('search')
-const profileEl = document.getElementById('profile')
 const refreshBtn = document.getElementById('refresh-btn')
 const listEl = document.getElementById('list')
 const outputEl = document.getElementById('output')
 
 let plugins = []
-
-async function loadProfiles() {
-  const profiles = await window.pluginApi.listProfiles()
-  profileEl.innerHTML = ''
-  for (const p of profiles) {
-    const opt = document.createElement('option')
-    opt.value = p.name
-    opt.textContent = p.name
-    profileEl.append(opt)
-  }
-}
 
 async function loadMarketplace(refresh = false) {
   statusEl.textContent = refresh ? '正在刷新市场...' : '正在加载市场...'
@@ -61,11 +49,12 @@ function render() {
     meta.append(repo, badge, cat)
     const install = document.createElement('button')
     install.className = 'primary'
-    install.textContent = '安装到 ' + profileEl.value
+    install.textContent = '安装'
     install.onclick = async () => {
       outputEl.hidden = false
       statusEl.textContent = `正在安装 ${p.name}...`
-      const res = await window.pluginApi.install(p.repo)
+      // git 源判定需 github: 前缀（裸 owner/repo 会被当 npm 包处理）
+      const res = await window.pluginApi.install('github:' + p.repo)
       outputEl.textContent = res.output
       statusEl.textContent = res.ok
         ? (res.needsRestart ? '安装成功（bundle，重启生效）' : '安装成功（已实时挂载）')
@@ -78,6 +67,4 @@ function render() {
 
 searchEl.oninput = render
 refreshBtn.onclick = () => loadMarketplace(true)
-profileEl.onchange = render
-loadProfiles()
 loadMarketplace()

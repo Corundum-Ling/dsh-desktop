@@ -18,7 +18,6 @@ function setBusy(value) {
 async function refresh() {
   try {
     const view = await window.pluginApi.list()
-    const core = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@deepseek-ai/dsh-headless']
     listEl.innerHTML = ''
     if (!view.rows.length && !view.inserts.length) {
       listEl.innerHTML = '<div style="color:var(--dsw-alias-label-secondary)">暂无插件行（dsh 未就绪或行树为空）</div>'
@@ -62,8 +61,8 @@ async function refresh() {
         slider.className = 'slider'
         sw.append(cb, slider)
         right.append(sw)
-        // 卸载按钮（核心组件禁用）
-        if (!core.includes(row.name)) {
+        // 卸载按钮（核心组件禁用，core 由 list 按 bundle 归属标注）
+        if (!row.core) {
           const rm = document.createElement('button')
           rm.className = 'danger'
           rm.textContent = '卸载'
