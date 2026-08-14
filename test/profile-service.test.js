@@ -56,6 +56,20 @@ describe('createProfileService', () => {
     expect(existsSync(join(baseDir, 'dsh-home', '..'))).toBe(true) // dsh-home 还在
   })
 
+  it('createProfile 覆盖默认 bundles（spec §4.5：web 模板 → web-app，headless 模板 → headless）', () => {
+    mkdirSync(join(baseDir, 'dsh-home', 'profiles', 'headless'), { recursive: true })
+    writeFileSync(join(baseDir, 'dsh-home', 'profiles', 'headless', 'package.json'), JSON.stringify({
+      name: 'dsh-profile-headless',
+      dsh: { profile: { bundles: ['@deepseek-ai/dsh-base'] } }, // 模板 bundles 故意不完整，验证被覆盖
+    }))
+    svc().createProfile('work', 'web')
+    const web = JSON.parse(readFileSync(join(baseDir, 'dsh-home', 'profiles', 'work', 'package.json'), 'utf8'))
+    expect(web.dsh.profile.bundles).toEqual(['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'])
+    svc().createProfile('hl', 'headless')
+    const hl = JSON.parse(readFileSync(join(baseDir, 'dsh-home', 'profiles', 'hl', 'package.json'), 'utf8'))
+    expect(hl.dsh.profile.bundles).toEqual(['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-headless'])
+  })
+
   it('createProfile 模板损坏时不留孤儿目录', () => {
     writeFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'package.json'), 'not-json{')
     expect(() => svc().createProfile('work', 'web')).toThrow()

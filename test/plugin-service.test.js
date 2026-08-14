@@ -145,6 +145,10 @@ describe('install / remove / in-box 保护', () => {
     writeFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'node_modules', 'dsh-bundle', 'package.json'),
       JSON.stringify({ name: 'dsh-bundle', version: '1.0.0', dsh: { bundle: { patch: './cordis.patch.yml' } } }))
     writeFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'node_modules', 'dsh-bundle', 'cordis.patch.yml'), '[]\n')
+    writeFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'package.json'), JSON.stringify({
+      dsh: { profile: { bundles: ['@deepseek-ai/dsh-base'] } },
+      dependencies: { 'dsh-bundle': '^1.0.0' }, // pnpm 安装后的依赖 diff
+    }))
     const { impl } = fakeSpawnImpl()
     const pm = createPluginManager({ nodePath: 'node.exe', dshEntry: 'dsh.js', dshHome: join(baseDir, 'dsh-home'), env: { PATH: 'C:/bin' }, spawnImpl: impl })
     const svc = createPluginService({ nodePath: 'node.exe', dshEntry: 'dsh.js', dshHome: join(baseDir, 'dsh-home'), env: { PATH: 'C:/bin' }, runDumpConfigImpl: async () => [] })
@@ -156,6 +160,10 @@ describe('install / remove / in-box 保护', () => {
   it('install 检测非 bundle：写 insert 行实时挂载', async () => {
     writeFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'node_modules', 'dsh-nonbundle', 'package.json'),
       JSON.stringify({ name: 'dsh-nonbundle', version: '1.0.0' }))
+    writeFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'package.json'), JSON.stringify({
+      dsh: { profile: { bundles: ['@deepseek-ai/dsh-base'] } },
+      dependencies: { 'dsh-nonbundle': '^1.0.0' }, // pnpm 安装后的依赖 diff
+    }))
     const { impl } = fakeSpawnImpl()
     const pm = createPluginManager({ nodePath: 'node.exe', dshEntry: 'dsh.js', dshHome: join(baseDir, 'dsh-home'), env: { PATH: 'C:/bin' }, spawnImpl: impl })
     const svc = createPluginService({ nodePath: 'node.exe', dshEntry: 'dsh.js', dshHome: join(baseDir, 'dsh-home'), env: { PATH: 'C:/bin' }, runDumpConfigImpl: async () => [] })
@@ -166,18 +174,61 @@ describe('install / remove / in-box 保护', () => {
     expect(patch).toContain("name: 'dsh-nonbundle'")
   })
 
-  it('install scoped 非 bundle：entry id 不安全 → 保守 needsRestart 降级（不裸抛）', async () => {
+  it('install 依赖 diff 匹配：依赖值为完整 git spec 时按值命中真实包名', async () => {
+    // pnpm add github:user/repo#main 后 package.json 写入 { 'dsh-nonbundle': 'github:user/dsh-nonbundle#main' }
+    const spec = 'github:user/dsh-nonbundle#main'
+    writeFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'node_modules', 'dsh-nonbundle', 'package.json'),
+      JSON.stringify({ name: 'dsh-nonbundle', version: '1.0.0' }))
+    writeFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'package.json'), JSON.stringify({
+      dsh: { profile: { bundles: ['@deepseek-ai/dsh-base'] } },
+      dependencies: { 'dsh-nonbundle': spec },
+    }))
+    const { impl } = fakeSpawnImpl()
+    const pm = createPluginManager({ nodePath: 'node.exe', dshEntry: 'dsh.js', dshHome: join(baseDir, 'dsh-home'), env: { PATH: 'C:/bin' }, spawnImpl: impl })
+    const svc = createPluginService({ nodePath: 'node.exe', dshEntry: 'dsh.js', dshHome: join(baseDir, 'dsh-home'), env: { PATH: 'C:/bin' }, runDumpConfigImpl: async () => [] })
+    const res = await svc.install(spec, pm)
+    expect(res.ok).toBe(true)
+    expect(res.needsRestart).toBe(false)
+    const patch = readFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'cordis.patch.yml'), 'utf8')
+    expect(patch).toContain("name: 'dsh-nonbundle'")
+  })
+
+  it('install github 源：依赖值包含 clean 名 → includes 分支解析真实包名', async () => {
+    // spec 为 npm git 简写 user/repo#branch，pnpm 写入依赖值为 github: 前缀完整形式
+    const spec = 'user/dsh-nonbundle#main'
+    writeFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'node_modules', 'dsh-nonbundle', 'package.json'),
+      JSON.stringify({ name: 'dsh-nonbundle', version: '1.0.0' }))
+    writeFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'package.json'), JSON.stringify({
+      dsh: { profile: { bundles: ['@deepseek-ai/dsh-base'] } },
+      dependencies: { 'dsh-nonbundle': 'github:user/dsh-nonbundle#main' },
+    }))
+    const { impl } = fakeSpawnImpl()
+    const pm = createPluginManager({ nodePath: 'node.exe', dshEntry: 'dsh.js', dshHome: join(baseDir, 'dsh-home'), env: { PATH: 'C:/bin' }, spawnImpl: impl })
+    const svc = createPluginService({ nodePath: 'node.exe', dshEntry: 'dsh.js', dshHome: join(baseDir, 'dsh-home'), env: { PATH: 'C:/bin' }, runDumpConfigImpl: async () => [] })
+    const res = await svc.install(spec, pm)
+    expect(res.ok).toBe(true)
+    expect(res.needsRestart).toBe(false)
+    const patch = readFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'cordis.patch.yml'), 'utf8')
+    expect(patch).toContain("name: 'dsh-nonbundle'")
+  })
+
+  it('install scoped 名：slugify 转安全 entry id 实时挂载（不再降级重启）', async () => {
     mkdirSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'node_modules', '@scope', 'pkg'), { recursive: true })
     writeFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'node_modules', '@scope', 'pkg', 'package.json'),
       JSON.stringify({ name: '@scope/pkg', version: '1.0.0' }))
+    writeFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'package.json'), JSON.stringify({
+      dsh: { profile: { bundles: ['@deepseek-ai/dsh-base'] } },
+      dependencies: { '@scope/pkg': '^1.0.0' },
+    }))
     const { impl } = fakeSpawnImpl()
     const pm = createPluginManager({ nodePath: 'node.exe', dshEntry: 'dsh.js', dshHome: join(baseDir, 'dsh-home'), env: { PATH: 'C:/bin' }, spawnImpl: impl })
     const svc = createPluginService({ nodePath: 'node.exe', dshEntry: 'dsh.js', dshHome: join(baseDir, 'dsh-home'), env: { PATH: 'C:/bin' }, runDumpConfigImpl: async () => [] })
     const res = await svc.install('@scope/pkg', pm)
     expect(res.ok).toBe(true)
-    expect(res.needsRestart).toBe(true) // scoped 名不能做 insert id → 降级重启
+    expect(res.needsRestart).toBe(false) // slugify 后 entry id 安全 → 实时挂载
     const patch = readFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'cordis.patch.yml'), 'utf8')
-    expect(patch).toBe('[]\n') // 未写 insert 行
+    expect(patch).toContain('id: scope-pkg')
+    expect(patch).toContain("name: '@scope/pkg'")
   })
 
   it('remove 拒绝 in-box 核心组件', async () => {

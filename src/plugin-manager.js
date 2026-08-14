@@ -26,11 +26,12 @@ export function toResult(child, { timeoutMs = 300000 } = {}) {
   })
 }
 
-export function createPluginManager({ nodePath, dshEntry, dshHome, env, spawnImpl = spawn, timeoutMs = 300000 }) {
-  const profileDir = join(dshHome, 'profiles', 'web')
+export function createPluginManager({ nodePath, dshEntry, dshHome, env, profile = () => 'web', spawnImpl = spawn, timeoutMs = 300000 }) {
+  // profile 改为函数参数：切换 profile 后无需重建 manager，取值即最新
+  const profileDir = () => join(dshHome, 'profiles', profile())
 
   async function listPlugins() {
-    const pkgFile = join(profileDir, 'package.json')
+    const pkgFile = join(profileDir(), 'package.json')
     if (!existsSync(pkgFile)) return []
     const pkg = JSON.parse(readFileSync(pkgFile, 'utf8'))
     return Object.entries(pkg.dependencies || {}).map(([name, version]) => ({ name, version }))
@@ -46,11 +47,11 @@ export function createPluginManager({ nodePath, dshEntry, dshHome, env, spawnImp
   }
 
   async function installPlugin(spec) {
-    return runPluginCmd([dshEntry, 'plugin', '--profile', 'web', 'add', spec])
+    return runPluginCmd([dshEntry, 'plugin', '--profile', profile(), 'add', spec])
   }
 
   async function removePlugin(name) {
-    return runPluginCmd([dshEntry, 'plugin', '--profile', 'web', 'remove', name])
+    return runPluginCmd([dshEntry, 'plugin', '--profile', profile(), 'remove', name])
   }
 
   return { listPlugins, installPlugin, removePlugin }

@@ -8,12 +8,13 @@ import {
 } from './patch-manager.js'
 import { runDumpConfig as defaultDump } from './dump-config.js'
 
-export function createPluginService({ nodePath, dshEntry, dshHome, env, profile = 'web', runDumpConfigImpl = defaultDump, timeoutMs = 30000 }) {
-  const profileDir = join(dshHome, 'profiles', profile)
-  const patchPath = () => join(profileDir, 'cordis.patch.yml')
+export function createPluginService({ nodePath, dshEntry, dshHome, env, profile = () => 'web', runDumpConfigImpl = defaultDump, timeoutMs = 30000 }) {
+  // profile 改为函数参数：切换 profile 后无需重建 service，取值即最新
+  const profileDir = () => join(dshHome, 'profiles', profile())
+  const patchPath = () => join(profileDir(), 'cordis.patch.yml')
 
   function readBundles() {
-    const pkgFile = join(profileDir, 'package.json')
+    const pkgFile = join(profileDir(), 'package.json')
     if (!existsSync(pkgFile)) return []
     try {
       return JSON.parse(readFileSync(pkgFile, 'utf8')).dsh?.profile?.bundles ?? []
@@ -29,7 +30,7 @@ export function createPluginService({ nodePath, dshEntry, dshHome, env, profile 
 
   async function list() {
     const [rows, insertRows] = await Promise.all([
-      runDumpConfigImpl({ nodePath, dshEntry, dshHome, profile, env, timeoutMs }),
+      runDumpConfigImpl({ nodePath, dshEntry, dshHome, profile: profile(), env, timeoutMs }),
       Promise.resolve(readInsertRows(readPatch())),
     ])
     return { rows: rows.map(r => ({ ...r, core: isCoreBundle(r.bundle) })), inserts: insertRows, bundles: readBundles() }
@@ -89,7 +90,7 @@ export function createPluginService({ nodePath, dshEntry, dshHome, env, profile 
 
   /** 读取已安装包 manifest；isBundle = 有 dsh.bundle 字段 */
   function readInstalledPackage(name) {
-    const pkgFile = join(profileDir, 'node_modules', name, 'package.json')
+    const pkgFile = join(profileDir(), 'node_modules', name, 'package.json')
     if (!existsSync(pkgFile)) return null
     try {
       return JSON.parse(readFileSync(pkgFile, 'utf8'))
@@ -98,33 +99,49 @@ export function createPluginService({ nodePath, dshEntry, dshHome, env, profile 
     }
   }
 
+  /** 读取当前 profile 的依赖表（install 后 pnpm 写入的 diff 即真实包名来源） */
+  function readDeps() {
+    try {
+      return JSON.parse(readFileSync(join(profileDir(), 'package.json'), 'utf8')).dependencies ?? {}
+    } catch {
+      return {}
+    }
+  }
+
+  /** 解析安装 spec 对应的真实包名：直接命中 → 剥离 :# → 依赖值匹配 */
+  function resolveInstalledName(spec) {
+    const deps = readDeps()
+    if (typeof deps[spec] === 'string') return spec
+    const clean = spec.split(':').pop().split('#')[0].trim()
+    if (typeof deps[clean] === 'string') return clean
+    return Object.keys(deps).find(k => deps[k] === spec || deps[k]?.includes(clean)) ?? null
+  }
+
+  /** entry id 安全化：scoped 名（@scope/pkg）→ scope-pkg */
+  function slugify(name) {
+    return name.replace(/^@/, '').replace(/[^a-z0-9-]/gi, '-').toLowerCase()
+  }
+
   async function install(spec, pm) {
     const res = await pm.installPlugin(spec)
     if (!res.ok) return { ok: false, output: res.output, needsRestart: false }
-    // 从输出/依赖猜测包名：spec 去掉 npm scope 前缀取尾段，或读依赖 diff
-    const name = guessInstalledName(spec)
+    // 从依赖 diff 解析真实包名：registry 直接命中 / git/scoped 按依赖值匹配
+    const name = resolveInstalledName(spec)
     const pkg = name ? readInstalledPackage(name) : null
     if (pkg && pkg.dsh?.bundle) {
       return { ok: true, output: res.output, needsRestart: true }
     }
     if (pkg) {
-      // 非 bundle：写 insert 行实时挂载
-      // scoped 包名（@scope/pkg）不满足 entry id 安全字符集（patch-manager 校验），
-      // 此时不能裸抛（渲染层无 catch → uncaught）；降级为保守 needsRestart 路径
+      // 非 bundle：写 insert 行实时挂载；scoped 包名用 slugify 转安全 entry id
       try {
         const patch = readPatch()
-        writePatch(patchPath(), addInsertRow(patch, pkg.name, pkg.name))
+        writePatch(patchPath(), addInsertRow(patch, slugify(pkg.name), pkg.name))
         return { ok: true, output: res.output, needsRestart: false }
-      } catch {
-        return { ok: true, output: res.output, needsRestart: true }
+      } catch (err) {
+        return { ok: true, output: `已安装依赖但实时挂载失败: ${err?.message ?? err}（可手动编辑 cordis.patch.yml 或重装）`, needsRestart: false }
       }
     }
     return { ok: true, output: res.output, needsRestart: true } // 未知类型，保守重启
-  }
-
-  function guessInstalledName(spec) {
-    const clean = spec.split(':').pop().split('#')[0].trim()
-    return clean
   }
 
   async function remove(name, pm) {
@@ -145,7 +162,7 @@ export function createPluginService({ nodePath, dshEntry, dshHome, env, profile 
 
   /** 按行 name（或 id）查 dump-config，判断其 bundle 是否核心 */
   async function isCoreRow(name) {
-    const rows = await runDumpConfigImpl({ nodePath, dshEntry, dshHome, profile, env, timeoutMs })
+    const rows = await runDumpConfigImpl({ nodePath, dshEntry, dshHome, profile: profile(), env, timeoutMs })
     const row = rows.find(r => r.name === name || r.id === name)
     return row !== undefined && isCoreBundle(row.bundle)
   }

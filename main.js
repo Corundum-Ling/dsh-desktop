@@ -169,6 +169,7 @@ if (!gotLock) {
       dshEntry: resourcePaths().dshEntry,
       dshHome: config.dshHome(),
       env,
+      profile: () => service?.profile ?? 'web', // profile 穿透：跟随当前 service profile
       timeoutMs: 120000, // 插件安装最长 2 分钟，避免网络卡住拖死启动
     })
     const ps = createPluginService({
@@ -176,6 +177,7 @@ if (!gotLock) {
       dshEntry: resourcePaths().dshEntry,
       dshHome: config.dshHome(),
       env,
+      profile: () => service?.profile ?? 'web', // profile 穿透：跟随当前 service profile
       runDumpConfigImpl: runDumpConfig,
     })
     const mk = createMarketplace({ fetchImpl: fetchPluginsMd, cacheDir: join(config.dshHome(), '..', 'marketplace-cache') })
@@ -235,7 +237,15 @@ if (!gotLock) {
     ipcMain.handle('profiles:remove', (_e, name) => pf.removeProfile(String(name)))
     ipcMain.handle('profiles:copy', (_e, from, to) => pf.copyProfile(String(from), String(to)))
     ipcMain.handle('profiles:switch', async (_e, name) => {
-      await globalThis.__restartDsh(String(name))
+      const old = service.profile
+      try {
+        await globalThis.__restartDsh(String(name))
+      } catch (err) {
+        // 回滚：__restartDsh 内 restart 失败时 service.profile 已指向新 profile，
+        // 必须显式传旧 profile（默认参 `service?.profile ?? 'web'` 此时取到的是新的）
+        try { await globalThis.__restartDsh(old) } catch { /* 回滚失败也上报 */ }
+        throw err
+      }
       return { ok: true }
     })
     ipcMain.handle('theme:get', () => themeState)

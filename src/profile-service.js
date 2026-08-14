@@ -30,6 +30,12 @@ export function createProfileService({ dshHome }) {
     const srcPkgFile = join(src, 'package.json')
     const srcPkg = JSON.parse(readFileSync(srcPkgFile, 'utf8'))
     cpSync(src, dest, { recursive: true })
+    // 覆盖默认 bundles（spec §4.5）：headless 模板 → headless bundle，其余 → web-app
+    if (!srcPkg.dsh) srcPkg.dsh = {}
+    if (!srcPkg.dsh.profile) srcPkg.dsh.profile = {}
+    srcPkg.dsh.profile.bundles = template === 'headless'
+      ? ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-headless']
+      : ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app']
     // 改 name
     srcPkg.name = `dsh-profile-${name}`
     writeFileSync(join(dest, 'package.json'), JSON.stringify(srcPkg, null, 2) + '\n', 'utf8')

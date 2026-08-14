@@ -1,7 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld('pluginApi', {
-  list: (profile) => ipcRenderer.invoke('plugins:list', profile),
+  list: () => ipcRenderer.invoke('plugins:list'),
   setEnabled: (entryId, enabled) => ipcRenderer.invoke('plugins:set-enabled', entryId, enabled),
   install: (spec) => ipcRenderer.invoke('plugins:install', spec),
   remove: (name) => ipcRenderer.invoke('plugins:remove', name),
