@@ -165,6 +165,11 @@ if (!gotLock) {
       restartCount = 0
       try {
         await service.restart()
+      } catch (err) {
+        // 诊断埋点：手动重启失败路径原本无任何日志（错误只弹 UI），
+        // 导致无法定位新进程 exit 的真实原因
+        try { logStream.write(`\n[dsh-desktop] ${new Date().toISOString()} 手动重启失败: ${err.message}\n`) } catch {}
+        throw err
       } finally {
         manualRestart = false
       }
