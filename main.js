@@ -102,7 +102,10 @@ function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1280, height: 800,
     title: 'DeepSeek Harness',
-    webPreferences: { contextIsolation: true, nodeIntegration: false },
+    webPreferences: {
+      contextIsolation: true, nodeIntegration: false,
+      preload: join(__dirname, 'theme-probe.cjs'),
+    },
   })
   mainWindow.loadURL(`http://127.0.0.1:${service.port}/`)
   mainWindow.on('closed', () => { mainWindow = null })
@@ -131,6 +134,10 @@ function openChildWindow(kind) {
   })
   childWindows[kind].setMenu(null)
   childWindows[kind].loadFile(join(__dirname, conf.file))
+  // 主题应用：加载完成后先把当前主题推给子窗口（theme:get 兜底之外，确保首帧即一致）
+  childWindows[kind].webContents.on('did-finish-load', () => {
+    childWindows[kind].webContents.send('theme:changed', themeState)
+  })
   childWindows[kind].on('closed', () => { childWindows[kind] = null })
 }
 
@@ -232,6 +239,14 @@ if (!gotLock) {
       return { ok: true }
     })
     ipcMain.handle('theme:get', () => themeState)
+    // 主题广播：主窗口探针上报（MutationObserver + 2s 轮询兜底），实时推给所有子窗口
+    // （通道名 'theme:changed' 与 preload.cjs 的 themeApi.onChange 契约一致）
+    ipcMain.on('theme:probe', (_e, theme) => {
+      themeState = theme
+      for (const [kind, win] of Object.entries(childWindows)) {
+        if (win && !win.isDestroyed()) win.webContents.send('theme:changed', theme)
+      }
+    })
   })
 
   // 退出竞态防护：quit 链一旦开始就置位，防止 stop() 的 child.kill()
