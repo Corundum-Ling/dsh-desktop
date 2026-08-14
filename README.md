@@ -1,0 +1,49 @@
+# DeepSeek Harness Desktop
+
+DeepSeek Harness 的 Windows 桌面封装（Electron）。免安装 Node.js，双击即用。
+
+当前版本：0.1.0（内置 `@deepseek-ai/dsh@0.1.0-rc.6`）
+
+## 使用
+
+1. 下载 `DeepSeek Harness Setup 0.1.0.exe`（注意：文件名含空格）并安装
+   - 未签名，SmartScreen 会提示"未知发布者"：点击"更多信息"→"仍要运行"即可
+2. 启动后在 **Settings → Models** 填入你的 DeepSeek API key
+3. 选择 workspace 并开始使用
+
+## 插件
+
+- 菜单 **应用 → 插件管理** 可安装/卸载 dsh 插件
+- 支持 npm 包名与 `github:user/repo` 形式；git 插件若因 pnpm 构建权限失败，请改用 npm 已发布包
+- 插件安装/卸载成功后 dsh 自动重启，UI 短暂重新加载属正常现象
+
+## 数据位置
+
+- 应用数据：`%APPDATA%/dsh-desktop/`（凭证、配置、插件）
+- 日志：`%APPDATA%/dsh-desktop/logs/dsh.log`
+- 卸载程序不会清除应用数据，需要手动删除上述目录
+
+## 开发
+
+```bash
+npm install
+npm run prepare:resources   # 下载 node/pnpm + 安装固定版本 dsh
+npm start                   # 开发运行（需 resources 就绪）
+npm test                    # vitest 单测
+npm run dist                # 构建 NSIS 安装包
+```
+
+## 发版流程
+
+1. 修改 `scripts/prepare-resources.mjs` 顶部的 `DSH_VERSION`（及 Node/pnpm 版本）
+2. 更新 `package.json` 版本号
+3. `npm run prepare:resources`（若版本已下载则自动跳过）
+4. **升级前必须删除 `resources/` 目录**——`prepare:resources` 的幂等检查只验证目录存在性、不比对版本号，不删目录会导致打包仍旧版本
+5. `npm run dist`
+6. 上传 `dist/DeepSeek Harness Setup <版本>.exe` 到 GitHub Releases，附改动说明
+
+## 已知限制
+
+- 仅 Windows x64
+- 未签名（SmartScreen 会提示"未知发布者"）
+- dsh 为 developer preview，新版本可能有破坏性变更——升级前备份 `%APPDATA%/dsh-desktop/`
