@@ -169,7 +169,7 @@ describe('install / remove / in-box 保护', () => {
     const svc = createPluginService({ nodePath: 'node.exe', dshEntry: 'dsh.js', dshHome: join(baseDir, 'dsh-home'), env: { PATH: 'C:/bin' }, runDumpConfigImpl: async () => [] })
     const res = await svc.install('dsh-nonbundle', pm)
     expect(res.ok).toBe(true)
-    expect(res.needsRestart).toBe(false)
+    expect(res.needsRestart).toBe(true) // 非 bundle 也重启（dsh rc.6 不激活 insert 行，重启尝试）
     const patch = readFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'cordis.patch.yml'), 'utf8')
     expect(patch).toContain("name: 'dsh-nonbundle'")
   })
@@ -188,7 +188,7 @@ describe('install / remove / in-box 保护', () => {
     const svc = createPluginService({ nodePath: 'node.exe', dshEntry: 'dsh.js', dshHome: join(baseDir, 'dsh-home'), env: { PATH: 'C:/bin' }, runDumpConfigImpl: async () => [] })
     const res = await svc.install(spec, pm)
     expect(res.ok).toBe(true)
-    expect(res.needsRestart).toBe(false)
+    expect(res.needsRestart).toBe(true) // 非 bundle 也重启（dsh rc.6 不激活 insert 行，重启尝试）
     const patch = readFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'cordis.patch.yml'), 'utf8')
     expect(patch).toContain("name: 'dsh-nonbundle'")
   })
@@ -207,7 +207,7 @@ describe('install / remove / in-box 保护', () => {
     const svc = createPluginService({ nodePath: 'node.exe', dshEntry: 'dsh.js', dshHome: join(baseDir, 'dsh-home'), env: { PATH: 'C:/bin' }, runDumpConfigImpl: async () => [] })
     const res = await svc.install(spec, pm)
     expect(res.ok).toBe(true)
-    expect(res.needsRestart).toBe(false)
+    expect(res.needsRestart).toBe(true) // 非 bundle 也重启（dsh rc.6 不激活 insert 行，重启尝试）
     const patch = readFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'cordis.patch.yml'), 'utf8')
     expect(patch).toContain("name: 'dsh-nonbundle'")
   })
@@ -225,7 +225,7 @@ describe('install / remove / in-box 保护', () => {
     const svc = createPluginService({ nodePath: 'node.exe', dshEntry: 'dsh.js', dshHome: join(baseDir, 'dsh-home'), env: { PATH: 'C:/bin' }, runDumpConfigImpl: async () => [] })
     const res = await svc.install('@scope/pkg', pm)
     expect(res.ok).toBe(true)
-    expect(res.needsRestart).toBe(false) // slugify 后 entry id 安全 → 实时挂载
+    expect(res.needsRestart).toBe(true) // 非 bundle 也重启（dsh rc.6 不激活 insert 行，重启尝试） // slugify 后 entry id 安全 → 实时挂载
     const patch = readFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'cordis.patch.yml'), 'utf8')
     expect(patch).toContain('id: scope-pkg')
     expect(patch).toContain("name: '@scope/pkg'")
