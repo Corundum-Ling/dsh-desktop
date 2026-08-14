@@ -160,6 +160,11 @@ if (!gotLock) {
         mainWindow.loadURL(`http://127.0.0.1:${service.port}/`)
       }
     }
+
+    ipcMain.handle('plugins:list', () => globalThis.__pluginManager.listPlugins())
+    ipcMain.handle('plugins:install', (_e, spec) => globalThis.__pluginManager.installPlugin(spec))
+    ipcMain.handle('plugins:remove', (_e, name) => globalThis.__pluginManager.removePlugin(name))
+    ipcMain.handle('dsh:restart', () => globalThis.__restartDsh())
   })
 
   // 退出竞态防护：quit 链一旦开始就置位，防止 stop() 的 child.kill()
