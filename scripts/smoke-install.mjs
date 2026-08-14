@@ -1,5 +1,5 @@
-// 冒烟脚本：v2 审查修复后，用真实 pnpm + 真实 dsh 走完整 install 路径
-// 1) registry 非 bundle 插件（cordis-plugin-cron）→ 实时挂载（insert 行 + needsRestart=false）
+// 冒烟脚本：用真实 pnpm + 真实 dsh 走完整 install 路径
+// 1) registry 非 bundle 插件（cordis-plugin-cron）→ 写入 insert 行并如实标记需要重启
 // 2) git 源（本地 git 仓库 + git+file:// 协议，等价 git 安装路径）→ 解析真实包名，不裸抛
 // 用法：node scripts/smoke-install.mjs（退出码 0 = 全部通过）
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs'
@@ -7,8 +7,8 @@ import { tmpdir } from 'node:os'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
-import { createPluginManager } from '../src/plugin-manager.js'
-import { createPluginService } from '../src/plugin-service.js'
+import { createPluginManager } from '../src/main/services/plugin-manager.js'
+import { createPluginService } from '../src/main/services/plugin-service.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const RES = join(__dirname, '..', 'resources')
@@ -37,7 +37,7 @@ try {
   const r1 = await ps.install('cordis-plugin-cron', pm)
   const patch = readFileSync(join(home, 'profiles', 'web', 'cordis.patch.yml'), 'utf8')
   const insertWritten = patch.includes("name: 'cordis-plugin-cron'")
-  const ok1 = r1.ok === true && r1.needsRestart === false && insertWritten
+  const ok1 = r1.ok === true && r1.needsRestart === true && insertWritten
   console.log(`[1 registry 非 bundle] ok=${r1.ok} needsRestart=${r1.needsRestart} insert行写入=${insertWritten}`)
   if (!ok1) { fail++; console.log('  输出: ' + String(r1.output ?? '').split('\n').slice(-4).join(' | ')) }
 } catch (e) {
@@ -63,7 +63,7 @@ try {
   const patch2 = readFileSync(join(home, 'profiles', 'web', 'cordis.patch.yml'), 'utf8')
   // 真实包名来自 git 仓库的 package.json（依赖 diff → includes 匹配），不是 spec 字符串
   const realNameWritten = patch2.includes("name: 'dsh-smoke-git'")
-  const ok2 = r2.ok === true && r2.needsRestart === false && realNameWritten
+  const ok2 = r2.ok === true && r2.needsRestart === true && realNameWritten
   console.log(`[2 git 源] ok=${r2.ok} needsRestart=${r2.needsRestart} 真实包名insert=${realNameWritten}`)
   if (!ok2) { fail++; console.log('  输出: ' + String(r2.output ?? '').split('\n').slice(-4).join(' | ')) }
 } catch (e) {

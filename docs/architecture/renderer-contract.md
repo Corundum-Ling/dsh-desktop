@@ -1,20 +1,20 @@
-# DeepSeek Harness Desktop — UI 设计交接文档
+# Renderer Contract
 
-> 交接对象：UI 设计 / 前端重构 agent
-> 交接日期：2026-08-14
-> 原则：**视觉与布局自由发挥，但"硬性约束"和"预留接口"必须保留**——破坏任一项会导致功能失效（启停/安装/市场/环境/主题同步）。
+> Applies to DeepSeek Harness Desktop 0.1.0. Last verified against the current `main` worktree on 2026-08-14.
+>
+> This document defines the stable boundary between the Electron main process, preload scripts, and local management renderers.
 
 ---
 
 ## 1. 项目背景（30 秒速览）
 
-Windows 桌面封装（Electron）把 dsh（DeepSeek Harness agent 工具）的 Web UI 包成 exe。应用有 1 个主窗口（加载 dsh 的 Web UI，**不要动**）+ 3 个二级管理窗口（本交接对象）：
+The application has one primary window for the upstream dsh Web UI and three local management windows:
 
 | 窗口 | 文件 | 功能 |
 |---|---|---|
-| 插件管理 | `plugin-window.html/js` | 插件行列表 + 行级启停 + 安装/卸载 |
-| 插件市场 | `marketplace-window.html/js` | 社区插件卡片浏览 + 搜索 + 一键安装 |
-| 环境管理 | `env-window.html/js` | dsh profile（环境）的创建/重命名/删除/复制/切换 |
+| 插件管理 | `src/renderer/plugin/index.html/js` | 插件行列表 + 行级启停 + 安装/卸载 |
+| 插件市场 | `src/renderer/marketplace/index.html/js` | 社区插件卡片浏览 + 搜索 + 一键安装 |
+| 环境管理 | `src/renderer/environment/index.html/js` | dsh profile（环境）的创建/重命名/删除/复制/切换 |
 
 技术形态：**纯 HTML/CSS/JS（无框架）**，`loadFile` 加载本地页面，经典 `<script src>`（非 module），渲染层**无 Node 能力**（沙箱 + contextIsolation）。
 
@@ -27,9 +27,9 @@ Windows 桌面封装（Electron）把 dsh（DeepSeek Harness agent 工具）的 
 dsh UI 有亮/暗主题 + 插件可换肤。我们的二级窗口通过**动态同步 dsh 的实际主题变量**保持一致：
 
 - **所有颜色必须用 CSS 变量 `var(--dsw-*)` 引用**（如 `var(--dsw-alias-bg-base)`、`var(--dsw-alias-label-primary)`）——**禁止硬编码颜色值**
-- 变量值由 `theme-applier.js` 从主窗口动态注入（每 2s 同步 + 事件驱动）——设计时只需引用变量名，值会自动跟随
-- **默认兜底值**定义在 `window-theme.css` 的 `:root`（亮色默认）——新增 CSS 变量时在这里补兜底
-- `body[data-ds-dark-theme]` 属性由 theme-applier 切换（当前无 CSS 依赖它，但**保留该属性的切换逻辑**，未来暗色选择器可用）
+- 变量值由 `src/renderer/shared/theme-applier.js` 从主窗口动态注入（每 2s 同步 + 事件驱动）——设计时只需引用变量名，值会自动跟随
+- **默认兜底值**定义在 `src/renderer/shared/window-theme.css` 的 `:root`（亮色默认）——新增 CSS 变量时在这里补兜底
+- `body[data-ds-dark-theme]` 属性由 `theme-applier.js` 切换（当前无 CSS 依赖它，但**保留该属性的切换逻辑**，未来暗色选择器可用）
 - 常用变量速查（完整清单见 dsh UI 的 CSS，`--dsw-alias-*` 随主题变化）：
   - 背景：`--dsw-alias-bg-base`（页面）/ `--dsw-alias-bg-layer-1`（浅层卡片/顶栏）
   - 文字：`--dsw-alias-label-primary`（主）/ `--dsw-alias-label-secondary`（次）
@@ -41,20 +41,20 @@ dsh UI 有亮/暗主题 + 插件可换肤。我们的二级窗口通过**动态�
 ### 2.2 渲染层能力边界
 
 - **无 `require` / `import` / Node API**（沙箱开启）
-- **唯一入口**：`window.pluginApi`（14 个方法，见 §3.1）+ `window.themeApi`（2 个方法，见 §3.2）——由 `preload.cjs` 注入，**不要新增 IPC 通道**（除非与后端协商）
+- **唯一入口**：`window.pluginApi`（13 个方法，见 §3.1）+ `window.themeApi`（2 个方法，见 §3.2）——由 `src/preload/management.cjs` 注入，**不要新增 IPC 通道**（除非与后端协商）
 - **禁止** `window.prompt()` / `window.open()`（Electron 渲染进程不支持/被禁）
-- 对话框用页面内元素实现（现有 `askInput` 模式可参考 env-window.js）
+- 对话框用页面内元素实现（现有 `askInput` 模式可参考 `src/renderer/environment/index.js`）
 
-### 2.3 窗口行为（main.js 已配置，UI 无需管）
+### 2.3 窗口行为（`src/main/index.js` 已配置，UI 无需管）
 
-- 二级窗口：**模态**（打开时主窗口不可操作）+ 无菜单栏 + 主窗口关闭时跟随关闭
-- 尺寸/标题在 `main.js` 的 `openChildWindow()` 配置——UI 需要调整窗口尺寸时改那一处（一个对象字面量）
+- 二级窗口：附属、非模态、单例、无菜单栏；主窗口关闭时跟随关闭
+- 尺寸/标题在 `src/main/index.js` 的 `openChildWindow()` 配置
 
 ---
 
 ## 3. 预留接口（JS 依赖，UI 必须保留）
 
-### 3.1 `window.pluginApi`（preload.cjs 暴露，渲染层唯一后端入口）
+### 3.1 `window.pluginApi`（`src/preload/management.cjs` 暴露，渲染层唯一后端入口）
 
 ```
 list()                      → {rows, inserts, bundles}   // 插件行树（id/name/bundle/disabled/core）+ insert 行 + bundle 列表
@@ -86,9 +86,9 @@ onChange(cb) → 订阅主题变化广播（实时跟随）
 
 - **状态栏**（`#status`）：所有操作反馈都写这里——必须**常驻可见**、支持错误样式（.error class）
 - **输出区**（`#output`）：安装/卸载的完整日志展示（含非 bundle 插件的如实警告）——保留 `hidden` 属性控制显隐
-- 三个窗口共用 `theme-applier.js`（HTML 末尾引用，勿删）
+- 三个窗口共用 `src/renderer/shared/theme-applier.js`（HTML 末尾引用，勿删）
 
-### 3.4 现有 CSS class 体系（window-theme.css，可扩展不可删）
+### 3.4 现有 CSS class 体系（`src/renderer/shared/window-theme.css`，可扩展不可删）
 
 `topbar`（顶栏）/ `content`（内容区）/ `plugin-row`（列表行）/ `bundle-group`（分组标题）/ `switch`+`slider`（启停开关）/ `search-row`（输入行）/ `card`（市场卡片）/ `badge ok|warn`（状态徽章）/ `danger`（危险按钮）/ `primary`（主按钮）/ `status`+`error` / `output`
 
@@ -109,7 +109,7 @@ onChange(cb) → 订阅主题变化广播（实时跟随）
 - 当前实现是功能优先的朴素样式，布局/动效/密度/信息层级都可以重新设计
 - 三个窗口风格必须统一（同一套变量 + 同一组件语言）
 - 可参考 dsh 生态 UI 插件的设计（如 dsh-web-ui 的右侧面板风格）
-- 窗口尺寸可调（main.js openChildWindow 一处）
+- 窗口尺寸可调（`src/main/index.js` 的 `openChildWindow()`）
 
 ---
 
@@ -117,6 +117,6 @@ onChange(cb) → 订阅主题变化广播（实时跟随）
 
 1. `npm start` 三个窗口正常打开、功能全部可用（列表/启停/安装/搜索/环境操作）
 2. dsh UI 切亮/暗主题 → 三个窗口 2 秒内跟随（无硬编码颜色残留）
-3. 主窗口关闭 → 三个窗口跟随关闭；二级窗口打开时主窗口不可操作
+3. 主窗口关闭 → 三个窗口跟随关闭；二级窗口打开时主窗口仍可操作
 4. 渲染进程零 console error
 5. 无 `require`/`import`/`prompt` 出现在渲染层

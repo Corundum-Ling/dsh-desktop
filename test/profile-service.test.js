@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync, existsSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createProfileService } from '../src/profile-service.js'
+import { createProfileService } from '../src/main/services/profile-service.js'
 
 describe('createProfileService', () => {
   let baseDir

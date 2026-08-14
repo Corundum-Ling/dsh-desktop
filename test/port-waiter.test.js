@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { createServer } from 'node:http'
-import { findFreePort, waitForPort } from '../src/port-waiter.js'
+import { findFreePort, waitForPort } from '../src/main/services/port-waiter.js'
 
 describe('findFreePort', () => {
   it('返回空闲端口', async () => {

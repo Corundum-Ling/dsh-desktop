@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseDumpConfig } from '../src/dump-config.js'
+import { parseDumpConfig } from '../src/main/services/dump-config.js'
 
 const FIXTURE = `# == @deepseek-ai/dsh-base
 - id: timer

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { parsePluginsMd, createMarketplace } from '../src/marketplace.js'
+import { parsePluginsMd, createMarketplace } from '../src/main/services/marketplace.js'
 
 const FIXTURE = `# PLUGINS.md — 插件登记清单（分类版）
 

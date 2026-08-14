@@ -8,7 +8,7 @@ import {
   addDisableBlock, removeDisableBlock,
   applyRowEnabled, applyRowDisabled,
   addInsertRow, removeInsertRow, writePatch,
-} from '../src/patch-manager.js'
+} from '../src/main/services/patch-manager.js'
 
 const START = '# dsh-plugin-manager:managed:start'
 const END = '# dsh-plugin-manager:managed:end'

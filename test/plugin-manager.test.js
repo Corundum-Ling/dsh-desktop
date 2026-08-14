@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { spawn } from 'node:child_process'
 import { EventEmitter } from 'node:events'
-import { createPluginManager, toResult } from '../src/plugin-manager.js'
+import { createPluginManager, toResult } from '../src/main/services/plugin-manager.js'
 
 // 与 dsh-service 测试的 makeFakeChild 同构：EventEmitter child + stdout/stderr 事件源，
 // 先 emit 'data' 再 emit 'close'（输出收全用 close 而非 exit）。

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { EventEmitter } from 'node:events'
 import { Writable } from 'node:stream'
-import { DshService } from '../src/dsh-service.js'
+import { DshService } from '../src/main/services/dsh-service.js'
 
 function makeFakeChild() {
   const child = new EventEmitter()

@@ -1,15 +1,18 @@
 {
   "name": "dsh-desktop",
   "version": "0.1.0",
-  "description": "DeepSeek Harness Desktop - Windows exe 封装",
+  "description": "Unofficial DeepSeek Harness desktop wrapper for Windows",
   "private": true,
+  "license": "MIT",
   "type": "module",
-  "main": "main.js",
+  "main": "src/main/index.js",
   "scripts": {
     "start": "electron .",
     "test": "vitest run",
+    "check:release": "node scripts/check-release.mjs",
+    "smoke:install": "node scripts/smoke-install.mjs",
     "prepare:resources": "node scripts/prepare-resources.mjs",
-    "dist": "electron-builder"
+    "dist": "npm run check:release && electron-builder"
   },
   "devDependencies": {
     "electron": "^43.4.0",

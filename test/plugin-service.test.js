@@ -3,8 +3,8 @@ import { EventEmitter } from 'node:events'
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync, existsSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createPluginService } from '../src/plugin-service.js'
-import { createPluginManager } from '../src/plugin-manager.js'
+import { createPluginService } from '../src/main/services/plugin-service.js'
+import { createPluginManager } from '../src/main/services/plugin-manager.js'
 
 describe('createPluginService', () => {
   let baseDir

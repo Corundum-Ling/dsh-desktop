@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, readFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createConfig } from '../src/config.js'
+import { createConfig } from '../src/main/services/config.js'
 
 describe('createConfig', () => {
   let baseDir

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildEnv } from '../src/main-env.js'
+import { buildEnv } from '../src/main/services/main-env.js'
 
 describe('buildEnv', () => {
   it('注入 DSH_HOME 并在 PATH 前置 bin 目录', () => {

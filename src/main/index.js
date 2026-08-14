@@ -2,18 +2,19 @@ import { app, BrowserWindow, Menu, dialog, ipcMain, shell } from 'electron'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createWriteStream, mkdirSync, readFileSync } from 'node:fs'
-import { createConfig } from './src/config.js'
-import { findFreePort, waitForPort } from './src/port-waiter.js'
-import { DshService } from './src/dsh-service.js'
-import { createPluginManager } from './src/plugin-manager.js'
-import { createPluginService } from './src/plugin-service.js'
-import { createMarketplace } from './src/marketplace.js'
-import { createProfileService } from './src/profile-service.js'
-import { runDumpConfig } from './src/dump-config.js'
-import { buildEnv } from './src/main-env.js'
+import { createConfig } from './services/config.js'
+import { findFreePort, waitForPort } from './services/port-waiter.js'
+import { DshService } from './services/dsh-service.js'
+import { createPluginManager } from './services/plugin-manager.js'
+import { createPluginService } from './services/plugin-service.js'
+import { createMarketplace } from './services/marketplace.js'
+import { createProfileService } from './services/profile-service.js'
+import { runDumpConfig } from './services/dump-config.js'
+import { buildEnv } from './services/main-env.js'
 
 // ESM 下没有全局 __dirname，用 import.meta.url 推导
 const __dirname = dirname(fileURLToPath(import.meta.url))
+const APP_ROOT = join(__dirname, '..', '..')
 
 // 开发/打包双路径：app.isPackaged 为标准判断（开发模式 npm start 自动走项目 resources，
 // 打包后走安装目录 resources）。旧方案依赖 DSH_DESKTOP_DEV 环境变量，但 start script
@@ -129,10 +130,10 @@ function createMainWindow() {
     titleBarOverlay: titleBarOverlay(),
     webPreferences: {
       contextIsolation: true, nodeIntegration: false,
-      preload: join(__dirname, 'theme-probe.cjs'),
+      preload: join(APP_ROOT, 'src', 'preload', 'theme-probe.cjs'),
     },
   })
-  const titlebarCss = readFileSync(join(__dirname, 'main-window.css'), 'utf8')
+  const titlebarCss = readFileSync(join(APP_ROOT, 'src', 'renderer', 'main-window.css'), 'utf8')
   let resolveInitialChrome
   const initialChromeReady = new Promise((resolve) => { resolveInitialChrome = resolve })
   let firstDocument = true
@@ -166,9 +167,9 @@ function openChildWindow(kind) {
     return
   }
   const conf = {
-    plugin: { width: 780, height: 820, minWidth: 560, minHeight: 560, file: 'plugin-window.html' },
-    marketplace: { width: 960, height: 780, minWidth: 620, minHeight: 560, file: 'marketplace-window.html' },
-    env: { width: 820, height: 680, minWidth: 560, minHeight: 520, file: 'env-window.html' },
+    plugin: { width: 780, height: 820, minWidth: 560, minHeight: 560, file: 'plugin/index.html' },
+    marketplace: { width: 960, height: 780, minWidth: 620, minHeight: 560, file: 'marketplace/index.html' },
+    env: { width: 820, height: 680, minWidth: 560, minHeight: 520, file: 'environment/index.html' },
   }[kind]
   childWindows[kind] = new BrowserWindow({
     ...conf, title: { plugin: '插件管理', marketplace: '插件市场', env: '环境管理' }[kind],
@@ -183,12 +184,12 @@ function openChildWindow(kind) {
       nodeIntegration: false,
       // 注意：package.json 是 "type": "module"，.js 会被当 ESM 加载；
       // ESM preload 要求 sandbox:false，故 preload 用 .cjs 保持沙箱默认开启
-      preload: join(__dirname, 'preload.cjs'),
+      preload: join(APP_ROOT, 'src', 'preload', 'management.cjs'),
     },
   })
   const childWindow = childWindows[kind]
   childWindow.setMenu(null)
-  childWindow.loadFile(join(__dirname, conf.file))
+  childWindow.loadFile(join(APP_ROOT, 'src', 'renderer', conf.file))
   // 主题应用：加载完成后先把当前主题推给子窗口（theme:get 兜底之外，确保首帧即一致）
   childWindow.webContents.on('did-finish-load', () => {
     childWindow.webContents.send('theme:changed', themeState)

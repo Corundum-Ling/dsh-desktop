@@ -1,26 +1,16 @@
 appId: com.corundum.dsh-desktop
 productName: DeepSeek Harness
-copyright: MIT
+copyright: Copyright © 2026 CorunLing
 
 directories:
   output: dist
 
 files:
-  - main.js
-  - preload.cjs
-  - plugin-window.html
-  - plugin-window.js
-  - marketplace-window.html
-  - marketplace-window.js
-  - env-window.html
-  - env-window.js
-  - main-window.css
-  - theme-applier.js
-  - theme-probe.cjs
-  - window-theme.css
   - src/**
+  - LICENSE
+  - THIRD-PARTY-NOTICES.md
 
-# 耦合约定：to: resources 与 main.js 的 RESOURCES_DIR（process.resourcesPath + '/resources'，Task 5）显性耦合，任一侧改动必须同步另一侧
+# Coupling: `to: resources` must stay aligned with RESOURCES_DIR in src/main/index.js.
 # node.exe / pnpm.exe / dsh 必须为磁盘真实文件（asar 虚拟文件系统无法被外部 node.exe 读取）
 extraResources:
   - from: resources
@@ -28,6 +18,7 @@ extraResources:
     filter:
       - node/node.exe
       - bin/pnpm.exe
+      - "licenses/**"
       - "dsh/**"
 
 win:
