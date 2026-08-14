@@ -1,5 +1,6 @@
 node_modules/
 dist/
+resources/bin/
 resources/node/
 resources/pnpm/
 resources/dsh/
