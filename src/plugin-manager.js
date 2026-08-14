@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 // 事件转 Promise：监听 close（所有 stdio 关闭后触发，保证输出收全）而非 exit；
 // error 先到先得幂等；超时后 kill 子进程并中止。
-function toResult(child, timeoutMs) {
+export function toResult(child, { timeoutMs = 300000 } = {}) {
   return new Promise((resolve) => {
     let output = ''
     let settled = false
@@ -26,15 +26,7 @@ function toResult(child, timeoutMs) {
   })
 }
 
-export function runCommand(nodePath, args, env, { timeoutMs = 300000 } = {}) {
-  const child = spawn(nodePath, args, {
-    env: { ...process.env, ...env },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  })
-  return toResult(child, timeoutMs).then(({ code, output }) => ({ ok: code === 0, output }))
-}
-
-export function createPluginManager({ nodePath, dshEntry, dshHome, env, spawnImpl = runCommand, timeoutMs = 300000 }) {
+export function createPluginManager({ nodePath, dshEntry, dshHome, env, spawnImpl = spawn, timeoutMs = 300000 }) {
   const profileDir = join(dshHome, 'profiles', 'web')
 
   async function listPlugins() {
@@ -44,14 +36,21 @@ export function createPluginManager({ nodePath, dshEntry, dshHome, env, spawnImp
     return Object.entries(pkg.dependencies || {}).map(([name, version]) => ({ name, version }))
   }
 
+  async function runPluginCmd(args) {
+    const child = spawnImpl(nodePath, args, {
+      env: { ...process.env, ...env },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    const { code, output } = await toResult(child, { timeoutMs })
+    return { ok: code === 0, output }
+  }
+
   async function installPlugin(spec) {
-    const res = await spawnImpl(nodePath, [dshEntry, 'plugin', '--profile', 'web', 'add', spec], env, { timeoutMs })
-    return { ok: res.ok, output: res.output }
+    return runPluginCmd([dshEntry, 'plugin', '--profile', 'web', 'add', spec])
   }
 
   async function removePlugin(name) {
-    const res = await spawnImpl(nodePath, [dshEntry, 'plugin', '--profile', 'web', 'remove', name], env, { timeoutMs })
-    return { ok: res.ok, output: res.output }
+    return runPluginCmd([dshEntry, 'plugin', '--profile', 'web', 'remove', name])
   }
 
   return { listPlugins, installPlugin, removePlugin }
