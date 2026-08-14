@@ -109,6 +109,23 @@ async function refresh() {
         item.className = 'plugin-row'
         const label = document.createElement('span')
         label.textContent = `${ins.name}  (${ins.id})`
+        // 启停开关（insert 行：块存在即挂载中；禁用 = 移除 insert 块，HMR 实时卸载）
+        const sw = document.createElement('label')
+        sw.className = 'switch'
+        const cb = document.createElement('input')
+        cb.type = 'checkbox'
+        cb.checked = true
+        cb.onchange = async () => {
+          if (busy) { cb.checked = !cb.checked; return }
+          setBusy(true)
+          const res = await window.pluginApi.setEnabled(ins.id, cb.checked)
+          setBusy(false)
+          if (!res.ok) { setStatus(`启停失败: ${res.output}`, true); cb.checked = !cb.checked }
+          else setStatus(`${ins.name} ${cb.checked ? '已启用' : '已禁用'}（HMR 即时生效）`)
+        }
+        const slider = document.createElement('span')
+        slider.className = 'slider'
+        sw.append(cb, slider)
         const rm = document.createElement('button')
         rm.className = 'danger'
         rm.textContent = '卸载（实时）'
@@ -121,7 +138,10 @@ async function refresh() {
           await refresh()
         }
         const right = document.createElement('div')
-        right.append(rm)
+        right.style.display = 'flex'
+        right.style.alignItems = 'center'
+        right.style.gap = '8px'
+        right.append(sw, rm)
         item.append(label, right)
         listEl.append(item)
       }

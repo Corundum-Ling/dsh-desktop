@@ -262,3 +262,44 @@ describe('install / remove / in-box 保护', () => {
     expect(res.ok).toBe(true)
   })
 })
+
+describe('insert 行启停（bug 修复：未知行）', () => {
+  let baseDir
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'ps-insert-'))
+    mkdirSync(join(baseDir, 'dsh-home', 'profiles', 'web'), { recursive: true })
+    writeFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'package.json'), JSON.stringify({
+      dsh: { profile: { bundles: ['@deepseek-ai/dsh-base'] } },
+    }))
+    // 真实场景：insert 块在 patch，dump-config 输出该行（bundle 注释 = patch 路径）
+    writeFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'cordis.patch.yml'),
+      '# dsh-plugin-manager:managed:start\n- insert:\n    - id: dsh-plugin-marketplace\n      name: \'dsh-plugin-marketplace\'\n# dsh-plugin-manager:managed:end\n')
+  })
+  afterEach(() => { rmSync(baseDir, { recursive: true, force: true }) })
+
+  function makeSvc(rows) {
+    return createPluginService({
+      nodePath: 'node.exe', dshEntry: 'dsh.js',
+      dshHome: join(baseDir, 'dsh-home'), env: { PATH: 'C:/bin' },
+      runDumpConfigImpl: async () => rows,
+    })
+  }
+
+  it('禁用 insert 行移除 insert 块（不再报未知行）', async () => {
+    const svc = makeSvc([{ id: 'dsh-plugin-marketplace', name: 'dsh-plugin-marketplace', bundle: 'cordis.patch.yml', disabled: false }])
+    const res = await svc.setEnabled('dsh-plugin-marketplace', false)
+    expect(res.ok).toBe(true)
+    const patch = readFileSync(svc.patchPath(), 'utf8')
+    expect(patch).not.toContain('dsh-plugin-marketplace')
+  })
+
+  it('启用 insert 行重新写入 insert 块', async () => {
+    // 先禁用（块被移除），再启用（块重写）
+    const svc = makeSvc([{ id: 'dsh-plugin-marketplace', name: 'dsh-plugin-marketplace', bundle: 'cordis.patch.yml', disabled: false }])
+    await svc.setEnabled('dsh-plugin-marketplace', false)
+    const res = await svc.setEnabled('dsh-plugin-marketplace', true)
+    expect(res.ok).toBe(true)
+    const patch = readFileSync(svc.patchPath(), 'utf8')
+    expect(patch).toContain("name: 'dsh-plugin-marketplace'")
+  })
+})

@@ -55,6 +55,23 @@ export function createPluginService({ nodePath, dshEntry, dshHome, env, profile 
       isPatchTopRow(entryId)
     )
 
+    // insert 行（非 bundle 插件）：patch 有 insert 块（insert 命中）或
+    // dump 显示它是 patch 挂载行（bundle 注释 = patch 路径，实测格式
+    // `# == ...\cordis.patch.yml`）都按 insert 行处理——禁用 = 移除 insert 块
+    // （HMR 实时卸载），启用 = 重写 insert 块（HMR 实时挂载）
+    const isPatchPathBundle = row !== undefined && /cordis\.patch\.yml$/.test(row.bundle)
+    if (insert || isPatchPathBundle) {
+      if (enabled) {
+        const name = insert?.name ?? row?.name ?? entryId
+        writePatch(patchPath(), addInsertRow(patch, entryId, name))
+      } else {
+        if (!insert) return { ok: true, output: '已禁用（无 insert 块可移除）' }
+        const { content, removed } = removeInsertRow(patch, insert.id)
+        if (!removed) return { ok: false, output: `insert 行 ${entryId} 不存在` }
+        writePatch(patchPath(), content)
+      }
+      return { ok: true, output: enabled ? '已启用' : '已禁用（HMR 即时生效）' }
+    }
     if (isBundleRow) {
       const next = enabled
         ? removeDisableBlock(patch, entryId)
