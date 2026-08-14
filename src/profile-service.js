@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync, rmSync, cpSync, renameSync } from 'node:fs'
+import { readdirSync, readFileSync, writeFileSync, existsSync, rmSync, cpSync, renameSync } from 'node:fs'
 import { join } from 'node:path'
 
 export function createProfileService({ dshHome }) {
@@ -26,12 +26,13 @@ export function createProfileService({ dshHome }) {
     const dest = join(profilesDir, name)
     if (existsSync(dest)) throw new Error(`profile 已存在: ${name}`)
     if (!existsSync(src)) throw new Error(`模板 profile 不存在: ${template}`)
+    // 先验证模板可解析，失败不留下孤儿目录
+    const srcPkgFile = join(src, 'package.json')
+    const srcPkg = JSON.parse(readFileSync(srcPkgFile, 'utf8'))
     cpSync(src, dest, { recursive: true })
     // 改 name
-    const pkgFile = join(dest, 'package.json')
-    const pkg = JSON.parse(readFileSync(pkgFile, 'utf8'))
-    pkg.name = `dsh-profile-${name}`
-    writeFileSync(pkgFile, JSON.stringify(pkg, null, 2) + '\n', 'utf8')
+    srcPkg.name = `dsh-profile-${name}`
+    writeFileSync(join(dest, 'package.json'), JSON.stringify(srcPkg, null, 2) + '\n', 'utf8')
     return { ok: true }
   }
 
@@ -46,6 +47,7 @@ export function createProfileService({ dshHome }) {
   }
 
   function removeProfile(name) {
+    if (!/^[A-Za-z0-9_-]+$/.test(name)) throw new Error(`非法 profile 名: ${name}`)
     const dir = join(profilesDir, name)
     if (!existsSync(dir)) throw new Error(`profile 不存在: ${name}`)
     rmSync(dir, { recursive: true, force: true })

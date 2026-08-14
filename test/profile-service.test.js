@@ -50,4 +50,15 @@ describe('createProfileService', () => {
     svc().copyProfile('web', 'backup')
     expect(existsSync(join(baseDir, 'dsh-home', 'profiles', 'backup', 'node_modules', 'x'))).toBe(true)
   })
+
+  it('removeProfile 拒绝非法名（防越界删除）', () => {
+    expect(() => svc().removeProfile('../evil')).toThrow(/非法/)
+    expect(existsSync(join(baseDir, 'dsh-home', '..'))).toBe(true) // dsh-home 还在
+  })
+
+  it('createProfile 模板损坏时不留孤儿目录', () => {
+    writeFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'package.json'), 'not-json{')
+    expect(() => svc().createProfile('work', 'web')).toThrow()
+    expect(existsSync(join(baseDir, 'dsh-home', 'profiles', 'work'))).toBe(false)
+  })
 })
