@@ -4,7 +4,7 @@ import {
   readInsertRows, hasManagedDisable,
   addDisableBlock, removeDisableBlock,
   applyRowEnabled, applyRowDisabled,
-  removeInsertRow, writePatch,
+  removeInsertRow, writePatch, addInsertRow,
 } from './patch-manager.js'
 import { runDumpConfig as defaultDump } from './dump-config.js'
 
@@ -80,5 +80,56 @@ export function createPluginService({ nodePath, dshEntry, dshHome, env, profile 
     return { ok: true, output: '已移除' }
   }
 
-  return { list, setEnabled, removeInsert, patchPath, readBundles }
+  const IN_BOX = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@deepseek-ai/dsh-headless']
+
+  /** 读取已安装包 manifest；isBundle = 有 dsh.bundle 字段 */
+  function readInstalledPackage(name) {
+    const pkgFile = join(profileDir, 'node_modules', name, 'package.json')
+    if (!existsSync(pkgFile)) return null
+    try {
+      return JSON.parse(readFileSync(pkgFile, 'utf8'))
+    } catch {
+      return null
+    }
+  }
+
+  async function install(spec, pm) {
+    const res = await pm.installPlugin(spec)
+    if (!res.ok) return { ok: false, output: res.output, needsRestart: false }
+    // 从输出/依赖猜测包名：spec 去掉 npm scope 前缀取尾段，或读依赖 diff
+    const name = guessInstalledName(spec)
+    const pkg = name ? readInstalledPackage(name) : null
+    if (pkg && pkg.dsh?.bundle) {
+      return { ok: true, output: res.output, needsRestart: true }
+    }
+    if (pkg) {
+      // 非 bundle：写 insert 行实时挂载
+      const patch = readPatch()
+      writePatch(patchPath(), addInsertRow(patch, pkg.name, pkg.name))
+      return { ok: true, output: res.output, needsRestart: false }
+    }
+    return { ok: true, output: res.output, needsRestart: true } // 未知类型，保守重启
+  }
+
+  function guessInstalledName(spec) {
+    const clean = spec.split(':').pop().split('#')[0].trim()
+    return clean
+  }
+
+  async function remove(name, pm) {
+    if (IN_BOX.includes(name)) {
+      return { ok: false, output: `${name} 是核心组件，不可卸载`, needsRestart: false }
+    }
+    // 先清 insert 行（若有），再走官方 remove
+    const insert = readInsertRows(readPatch()).find(i => i.name === name)
+    if (insert) {
+      const { content, removed } = removeInsertRow(readPatch(), insert.id)
+      if (removed) writePatch(patchPath(), content)
+    }
+    if (!pm) return { ok: true, output: 'insert 行已移除', needsRestart: false }
+    const res = await pm.removePlugin(name)
+    return { ok: res.ok, output: res.output, needsRestart: true }
+  }
+
+  return { list, setEnabled, removeInsert, install, remove, patchPath, readBundles }
 }
