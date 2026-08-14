@@ -31,6 +31,10 @@ export class DshService extends EventEmitter {
         if (this._started) this.emit('exit', code, signal)
         else reject(new Error(`dsh 进程启动失败 exit (code=${code}, signal=${signal})`))
       })
+      child.once('error', (err) => {
+        if (this._started) this.emit('error', err)
+        else reject(err)
+      })
 
       const ready = await this.waitForPort(this.port)
       if (!ready) {

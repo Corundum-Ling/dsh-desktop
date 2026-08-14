@@ -55,6 +55,14 @@ describe('DshService', () => {
     await expect(service.start()).rejects.toThrow(/exit/)
   })
 
+  it('spawn 失败（error 事件）时 reject', async () => {
+    const child = makeFakeChild()
+    const { service } = makeService({ child })
+    const p = service.start()
+    child.emit('error', new Error('ENOENT'))
+    await expect(p).rejects.toThrow(/ENOENT/)
+  })
+
   it('stop 调用 kill 并等退出', async () => {
     const { service, child } = makeService()
     await service.start()
