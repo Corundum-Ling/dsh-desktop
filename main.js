@@ -109,6 +109,12 @@ function createPluginWindow() {
   pluginWindow.on('closed', () => { pluginWindow = null })
 }
 
+// 锁定 userData 目录名为 %APPDATA%\DeepSeekHarness 与 spec 契约一致：
+// package.json 无 productName 时 app.name 回退到 name（dsh-desktop），
+// 而 electron-builder 的 productName 不影响 userData，故必须在
+// app.getPath('userData') 之前显式 setName（独立于安装器 productName）
+app.setName('DeepSeekHarness')
+
 const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) {
   app.quit()

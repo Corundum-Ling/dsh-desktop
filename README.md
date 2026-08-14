@@ -19,8 +19,8 @@ DeepSeek Harness 的 Windows 桌面封装（Electron）。免安装 Node.js，�
 
 ## 数据位置
 
-- 应用数据：`%APPDATA%/dsh-desktop/`（凭证、配置、插件）
-- 日志：`%APPDATA%/dsh-desktop/logs/dsh.log`
+- 应用数据：`%APPDATA%/DeepSeekHarness/`（凭证、配置、插件）
+- 日志：`%APPDATA%/DeepSeekHarness/logs/dsh.log`
 - 卸载程序不会清除应用数据，需要手动删除上述目录
 
 ## 开发
@@ -46,4 +46,4 @@ npm run dist                # 构建 NSIS 安装包
 
 - 仅 Windows x64
 - 未签名（SmartScreen 会提示"未知发布者"）
-- dsh 为 developer preview，新版本可能有破坏性变更——升级前备份 `%APPDATA%/dsh-desktop/`
+- dsh 为 developer preview，新版本可能有破坏性变更——升级前备份 `%APPDATA%/DeepSeekHarness/`
