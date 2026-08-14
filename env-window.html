@@ -6,15 +6,38 @@
   <link rel="stylesheet" href="./window-theme.css">
 </head>
 <body>
-  <div class="topbar">环境管理（profile） <span id="status" class="status" style="margin:0"></span></div>
-  <div class="content">
-    <div class="search-row">
-      <input type="text" id="new-name" placeholder="新 profile 名">
-      <button class="primary" id="create-btn">创建</button>
+  <header class="topbar">
+    <div class="title-block">
+      <span class="window-kicker">DeepSeek Harness</span>
+      <h1>环境管理</h1>
     </div>
-    <div id="profile-list"></div>
-    <pre class="output" id="output" hidden></pre>
-  </div>
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+  </header>
+  <main class="content">
+    <div class="content-inner">
+      <section class="action-panel" aria-labelledby="create-heading">
+        <div class="section-copy">
+          <h2 id="create-heading">创建环境</h2>
+          <p>新环境会使用默认 Web 模板。</p>
+        </div>
+        <div class="search-row">
+          <input type="text" id="new-name" aria-label="新 profile 名称" placeholder="输入 profile 名称" autocomplete="off" spellcheck="false">
+          <button class="primary" id="create-btn" type="button">创建</button>
+        </div>
+      </section>
+      <section class="collection-section" aria-labelledby="profiles-heading">
+        <div class="section-header">
+          <div>
+            <h2 id="profiles-heading">可用环境</h2>
+            <p>切换环境会自动重启 dsh，其他操作仅修改本地配置。</p>
+          </div>
+          <span id="profile-count" class="section-count"></span>
+        </div>
+        <div id="profile-list" class="list-panel"></div>
+      </section>
+      <pre class="output" id="output" aria-label="环境操作输出" tabindex="0" hidden></pre>
+    </div>
+  </main>
   <script src="./env-window.js"></script>
   <script src="./theme-applier.js"></script>
 </body>

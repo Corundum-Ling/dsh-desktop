@@ -123,9 +123,9 @@ function openChildWindow(kind) {
     return
   }
   const conf = {
-    plugin: { width: 720, height: 800, file: 'plugin-window.html' },
-    marketplace: { width: 900, height: 760, file: 'marketplace-window.html' },
-    env: { width: 640, height: 560, file: 'env-window.html' },
+    plugin: { width: 780, height: 820, minWidth: 560, minHeight: 560, file: 'plugin-window.html' },
+    marketplace: { width: 960, height: 780, minWidth: 620, minHeight: 560, file: 'marketplace-window.html' },
+    env: { width: 820, height: 680, minWidth: 560, minHeight: 520, file: 'env-window.html' },
   }[kind]
   childWindows[kind] = new BrowserWindow({
     ...conf, title: { plugin: '插件管理', marketplace: '插件市场', env: '环境管理' }[kind],

@@ -10,6 +10,13 @@ files:
   - preload.cjs
   - plugin-window.html
   - plugin-window.js
+  - marketplace-window.html
+  - marketplace-window.js
+  - env-window.html
+  - env-window.js
+  - theme-applier.js
+  - theme-probe.cjs
+  - window-theme.css
   - src/**
 
 # 耦合约定：to: resources 与 main.js 的 RESOURCES_DIR（process.resourcesPath + '/resources'，Task 5）显性耦合，任一侧改动必须同步另一侧

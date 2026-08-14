@@ -6,15 +6,38 @@
   <link rel="stylesheet" href="./window-theme.css">
 </head>
 <body>
-  <div class="topbar">插件市场 <span id="status" class="status" style="margin:0"></span></div>
-  <div class="content">
-    <div class="search-row">
-      <input type="text" id="search" placeholder="搜索插件名/说明...">
-      <button id="refresh-btn">刷新</button>
+  <header class="topbar">
+    <div class="title-block">
+      <span class="window-kicker">DeepSeek Harness</span>
+      <h1>插件市场</h1>
     </div>
-    <div id="list"></div>
-    <pre class="output" id="output" hidden></pre>
-  </div>
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+  </header>
+  <main class="content">
+    <div class="content-inner">
+      <section class="action-panel" aria-labelledby="discover-heading">
+        <div class="section-copy">
+          <h2 id="discover-heading">发现社区扩展</h2>
+          <p>浏览 awesome-dsh-plugins 收录的插件。</p>
+        </div>
+        <div class="search-row">
+          <input type="text" id="search" aria-label="搜索社区插件" placeholder="搜索名称、说明或分类" autocomplete="off">
+          <button id="refresh-btn" type="button">刷新</button>
+        </div>
+      </section>
+      <section class="collection-section" aria-labelledby="market-list-heading">
+        <div class="section-header">
+          <div>
+            <h2 id="market-list-heading">社区插件</h2>
+            <p>已验证表示插件来源和安装流程经过检查。</p>
+          </div>
+          <span id="result-count" class="section-count"></span>
+        </div>
+        <div id="list" class="card-grid"></div>
+      </section>
+      <pre class="output" id="output" aria-label="安装输出" tabindex="0" hidden></pre>
+    </div>
+  </main>
   <script src="./marketplace-window.js"></script>
   <script src="./theme-applier.js"></script>
 </body>

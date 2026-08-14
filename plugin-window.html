@@ -6,15 +6,38 @@
   <link rel="stylesheet" href="./window-theme.css">
 </head>
 <body>
-  <div class="topbar">插件管理 <span id="status" class="status" style="margin:0"></span></div>
-  <div class="content">
-    <div class="search-row">
-      <input type="text" id="spec" placeholder="包名 或 github:user/repo">
-      <button class="primary" id="install-btn">安装</button>
+  <header class="topbar">
+    <div class="title-block">
+      <span class="window-kicker">DeepSeek Harness</span>
+      <h1>插件管理</h1>
     </div>
-    <div id="plugin-list"></div>
-    <pre class="output" id="output" hidden></pre>
-  </div>
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+  </header>
+  <main class="content">
+    <div class="content-inner">
+      <section class="action-panel" aria-labelledby="install-heading">
+        <div class="section-copy">
+          <h2 id="install-heading">安装插件</h2>
+          <p>输入 npm 包名或 GitHub 仓库地址。</p>
+        </div>
+        <div class="search-row">
+          <input type="text" id="spec" aria-label="插件包名或 GitHub 仓库地址" placeholder="例如 @scope/plugin 或 github:user/repo" autocomplete="off" spellcheck="false">
+          <button class="primary" id="install-btn" type="button">安装</button>
+        </div>
+      </section>
+      <section class="collection-section" aria-labelledby="installed-heading">
+        <div class="section-header">
+          <div>
+            <h2 id="installed-heading">已挂载插件</h2>
+            <p>启停和卸载操作会在需要时自动重启 dsh。</p>
+          </div>
+          <span id="plugin-count" class="section-count"></span>
+        </div>
+        <div id="plugin-list"></div>
+      </section>
+      <pre class="output" id="output" aria-label="操作输出" tabindex="0" hidden></pre>
+    </div>
+  </main>
   <script src="./plugin-window.js"></script>
   <script src="./theme-applier.js"></script>
 </body>
