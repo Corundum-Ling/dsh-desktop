@@ -25,6 +25,7 @@ let service = null
 let restartCount = 0
 let logStream = null
 let quitting = false
+let manualRestart = false
 
 function resourcePaths() {
   return { nodePath, pnpmBinDir, dshEntry }
@@ -60,7 +61,7 @@ async function startDsh(config) {
     logStream.write(`\n[dsh-desktop] dsh error: ${err.message}\n`)
   })
   service.on('exit', (code) => {
-    if (quitting) return
+    if (quitting || manualRestart) return
     if (restartCount < 2 && code !== 0) {
       restartCount++
       logStream.write(`\n[dsh-desktop] dsh exited (${code}), restart #${restartCount}\n`)
@@ -160,8 +161,13 @@ if (!gotLock) {
 
     globalThis.__pluginManager = pm
     globalThis.__restartDsh = async () => {
+      manualRestart = true
       restartCount = 0
-      await service.restart()
+      try {
+        await service.restart()
+      } finally {
+        manualRestart = false
+      }
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.loadURL(`http://127.0.0.1:${service.port}/`)
       }

@@ -37,8 +37,8 @@ npm run dist                # 构建 NSIS 安装包
 
 1. 修改 `scripts/prepare-resources.mjs` 顶部的 `DSH_VERSION`（及 Node/pnpm 版本）
 2. 更新 `package.json` 版本号
-3. `npm run prepare:resources`（若版本已下载则自动跳过）
-4. **升级前必须删除 `resources/` 目录**——`prepare:resources` 的幂等检查只验证目录存在性、不比对版本号，不删目录会导致打包仍旧版本
+3. **升级前必须删除 `resources/` 目录**——prepare:resources 的幂等检查只看存在性不比版本，不删目录会导致打包仍旧版本
+4. `npm run prepare:resources`
 5. `npm run dist`
 6. 上传 `dist/DeepSeek Harness Setup <版本>.exe` 到 GitHub Releases，附改动说明
 

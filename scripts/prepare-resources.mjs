@@ -52,7 +52,10 @@ async function preparePnpm() {
   const exe = join(dir, 'pnpm.exe')
   if (existsSync(exe)) { console.log('[pnpm] 已存在，跳过'); return }
   console.log('[pnpm] 下载 pnpm', PNPM_VERSION, '...')
-  await download(`https://github.com/pnpm/pnpm/releases/download/${PNPM_VERSION}/pnpm-win-x64.exe`, exe)
+  // 下载到 .part 再原子改名：直接写目标路径时中断残留会被 existsSync 误判为"已存在"
+  const part = exe + '.part'
+  await download(`https://github.com/pnpm/pnpm/releases/download/${PNPM_VERSION}/pnpm-win-x64.exe`, part)
+  renameSync(part, exe)
   console.log('[pnpm] OK:', exe)
 }
 
