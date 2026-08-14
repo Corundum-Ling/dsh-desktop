@@ -13,9 +13,18 @@ DeepSeek Harness 的 Windows 桌面封装（Electron）。免安装 Node.js，�
 
 ## 插件
 
-- 菜单 **应用 → 插件管理** 可安装/卸载 dsh 插件
+**预装 [dsh-web-plugin-manager](https://github.com/LX2000WASD/dsh-web-plugin-manager)**（MIT，首次启动自动安装）：
+
+- Web UI **设置 → 插件**：查看/实时启停（非 bundle 插件零重启）、安装/卸载、环境管理
+- Web UI **市场**：浏览 awesome-dsh-plugins 插件市场，一键安装
+- 若预装失败（网络等原因），应用仍正常启动，可稍后自行安装：
+  `dsh plugin --profile web add dsh-web-plugin-manager`
+- 卸载后不会自动重装（尊重你的选择，需要时从市场重新安装）
+
+**备用入口**：菜单 **应用 → 插件管理**（Electron 窗口，走官方 `dsh plugin` 命令）：
+
 - 支持 npm 包名与 `github:user/repo` 形式；git 插件若因 pnpm 构建权限失败，请改用 npm 已发布包
-- 插件安装/卸载成功后 dsh 自动重启，UI 短暂重新加载属正常现象
+- bundle 插件安装/卸载后需要重启生效（自动执行，UI 短暂重新加载属正常现象）；非 bundle 插件可在 Web UI 里实时启停
 
 ## 数据位置
 

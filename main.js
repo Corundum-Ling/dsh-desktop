@@ -113,6 +113,32 @@ function createPluginWindow() {
   pluginWindow.on('closed', () => { pluginWindow = null })
 }
 
+// 预装 dsh-web-plugin-manager（Web UI 内插件管理：市场/实时启停/环境管理）。
+// 利用 dsh plugin 命令在 profile 缺失时自动初始化的特性，在 dsh 首次启动前完成预装，
+// 一次启动即含插件、无需额外重启。失败不阻塞主流程（记日志，用户可稍后手动装）。
+const PREINSTALLED_PLUGIN = 'dsh-web-plugin-manager'
+
+async function ensurePluginManager(config, pm) {
+  if (config.get('pluginManagerInstalled', false)) return
+  mkdirSync(config.logsDir(), { recursive: true })
+  const log = createWriteStream(join(config.logsDir(), 'dsh.log'), { flags: 'a' })
+  log.on('error', () => {})
+  const stamp = new Date().toISOString()
+  try {
+    const res = await pm.installPlugin(PREINSTALLED_PLUGIN)
+    if (res.ok) {
+      config.set('pluginManagerInstalled', true)
+      log.write(`\n[dsh-desktop] ${stamp} 预装 ${PREINSTALLED_PLUGIN} 成功\n`)
+    } else {
+      log.write(`\n[dsh-desktop] ${stamp} 预装 ${PREINSTALLED_PLUGIN} 失败: ${res.output}\n`)
+    }
+  } catch (err) {
+    log.write(`\n[dsh-desktop] ${stamp} 预装 ${PREINSTALLED_PLUGIN} 异常: ${err.message}\n`)
+  } finally {
+    log.end()
+  }
+}
+
 // 锁定 userData 目录名为 %APPDATA%\DeepSeekHarness 与 spec 契约一致：
 // package.json 无 productName 时 app.name 回退到 name（dsh-desktop），
 // 而 electron-builder 的 productName 不影响 userData，故必须在
@@ -141,8 +167,10 @@ if (!gotLock) {
       dshEntry: resourcePaths().dshEntry,
       dshHome: config.dshHome(),
       env,
+      timeoutMs: 120000, // 预装与插件安装最长 2 分钟，避免网络卡住拖死启动
     })
 
+    await ensurePluginManager(config, pm)
     try {
       await startDsh(config)
     } catch (err) {
