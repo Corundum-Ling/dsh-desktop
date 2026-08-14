@@ -55,7 +55,17 @@ async function refresh() {
           const res = await window.pluginApi.setEnabled(row.id, cb.checked)
           setBusy(false)
           if (!res.ok) { setStatus(`启停失败: ${res.output}`, true); cb.checked = !cb.checked }
-          else setStatus(`${row.id} ${cb.checked ? '已启用' : '已禁用'}（HMR 即时生效）`)
+          else {
+            // dsh rc.6 的 cordis.patch.yml HMR 在我们环境不生效（实测），
+            // 启停后自动重启保证生效（重启 = 重新加载 patch，100% 可靠）
+            setStatus(`${row.id} ${cb.checked ? '已启用' : '已禁用'}，正在重启 dsh...`)
+            try {
+              await window.pluginApi.restart()
+              setStatus(`${row.id} ${cb.checked ? '已启用' : '已禁用'}（重启生效）`)
+            } catch (err) {
+              setStatus(`重启失败: ${err.message}（可稍后重开应用）`, true)
+            }
+          }
         }
         const slider = document.createElement('span')
         slider.className = 'slider'
@@ -121,7 +131,16 @@ async function refresh() {
           const res = await window.pluginApi.setEnabled(ins.id, cb.checked)
           setBusy(false)
           if (!res.ok) { setStatus(`启停失败: ${res.output}`, true); cb.checked = !cb.checked }
-          else setStatus(`${ins.name} ${cb.checked ? '已启用' : '已禁用'}（HMR 即时生效）`)
+          else {
+            // 同 bundle 行：HMR 不生效，重启保证
+            setStatus(`${ins.name} ${cb.checked ? '已启用' : '已禁用'}，正在重启 dsh...`)
+            try {
+              await window.pluginApi.restart()
+              setStatus(`${ins.name} ${cb.checked ? '已启用' : '已禁用'}（重启生效）`)
+            } catch (err) {
+              setStatus(`重启失败: ${err.message}（可稍后重开应用）`, true)
+            }
+          }
         }
         const slider = document.createElement('span')
         slider.className = 'slider'
