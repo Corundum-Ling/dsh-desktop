@@ -36,6 +36,26 @@ let manualRestart = false
 // themeState 占位（Task 9 主题同步完善其内容与广播）
 let themeState = { isDark: false, variables: {} }
 
+function themeValue(name, fallback) {
+  return themeState.variables?.[name] || fallback
+}
+
+function titleBarOverlay() {
+  return {
+    color: themeValue('--dsw-alias-bg-layer-1', '#ffffff'),
+    symbolColor: themeValue('--dsw-alias-label-primary', '#0f1115'),
+    height: 40,
+  }
+}
+
+function syncChildWindowChrome(win) {
+  if (!win || win.isDestroyed()) return
+  const background = themeValue('--dsw-alias-bg-base', '#ffffff')
+  win.setBackgroundColor(background)
+  win.setTitleBarOverlay(titleBarOverlay())
+  if (process.platform === 'win32') win.setAccentColor(background)
+}
+
 function resourcePaths() {
   return { nodePath, pnpmBinDir, dshEntry }
 }
@@ -130,6 +150,11 @@ function openChildWindow(kind) {
   childWindows[kind] = new BrowserWindow({
     ...conf, title: { plugin: '插件管理', marketplace: '插件市场', env: '环境管理' }[kind],
     parent: mainWindow,
+    show: false,
+    backgroundColor: themeValue('--dsw-alias-bg-base', '#ffffff'),
+    accentColor: themeValue('--dsw-alias-bg-base', '#ffffff'),
+    titleBarStyle: 'hidden',
+    titleBarOverlay: titleBarOverlay(),
     // 模态（#3 用户反馈）：打开二级窗口后主窗口不可操作，行为统一
     modal: true,
     webPreferences: {
@@ -140,13 +165,19 @@ function openChildWindow(kind) {
       preload: join(__dirname, 'preload.cjs'),
     },
   })
-  childWindows[kind].setMenu(null)
-  childWindows[kind].loadFile(join(__dirname, conf.file))
+  const childWindow = childWindows[kind]
+  childWindow.setMenu(null)
+  childWindow.loadFile(join(__dirname, conf.file))
   // 主题应用：加载完成后先把当前主题推给子窗口（theme:get 兜底之外，确保首帧即一致）
-  childWindows[kind].webContents.on('did-finish-load', () => {
-    childWindows[kind].webContents.send('theme:changed', themeState)
+  childWindow.webContents.on('did-finish-load', () => {
+    childWindow.webContents.send('theme:changed', themeState)
   })
-  childWindows[kind].on('closed', () => { childWindows[kind] = null })
+  // Chromium 和动态主题都准备好后才显示，避免默认白底/原生标题栏先闪一帧。
+  childWindow.once('ready-to-show', async () => {
+    try { await childWindow.webContents.executeJavaScript('window.__themeReadyPromise') } catch {}
+    if (!childWindow.isDestroyed()) childWindow.show()
+  })
+  childWindow.on('closed', () => { childWindows[kind] = null })
 }
 
 // 锁定 userData 目录名为 %APPDATA%\DeepSeekHarness 与 spec 契约一致：
@@ -265,7 +296,10 @@ if (!gotLock) {
     ipcMain.on('theme:probe', (_e, theme) => {
       themeState = theme
       for (const [kind, win] of Object.entries(childWindows)) {
-        if (win && !win.isDestroyed()) win.webContents.send('theme:changed', theme)
+        if (win && !win.isDestroyed()) {
+          syncChildWindowChrome(win)
+          win.webContents.send('theme:changed', theme)
+        }
       }
     })
   })

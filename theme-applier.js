@@ -5,12 +5,16 @@ function applyTheme(theme) {
   for (const [name, value] of Object.entries(theme.variables)) {
     if (value) root.style.setProperty(name, value)
   }
-}
-window.themeApi?.get().then((theme) => {
-  if (theme) { applyTheme(theme); if (theme.isDark) document.body.setAttribute('data-ds-dark-theme', '') }
-})
-window.themeApi?.onChange((theme) => {
-  applyTheme(theme)
   if (theme.isDark) document.body.setAttribute('data-ds-dark-theme', '')
   else document.body.removeAttribute('data-ds-dark-theme')
+}
+window.__themeReadyPromise = Promise.resolve(window.themeApi?.get())
+  .then((theme) => { if (theme) applyTheme(theme) })
+  .catch(() => {})
+  .then(() => new Promise((resolve) => {
+    document.documentElement.setAttribute('data-theme-ready', '')
+    requestAnimationFrame(() => requestAnimationFrame(resolve))
+  }))
+window.themeApi?.onChange((theme) => {
+  applyTheme(theme)
 })

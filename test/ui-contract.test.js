@@ -52,4 +52,23 @@ describe('secondary window UI contract', () => {
     ]
     for (const asset of assets) expect(builder).toContain(`- ${asset}`)
   })
+
+  it('keeps secondary windows hidden until their themed first frame is ready', () => {
+    const main = read('main.js')
+    expect(main).toContain('show: false')
+    expect(main).toContain("once('ready-to-show'")
+    expect(main).toContain("titleBarStyle: 'hidden'")
+    expect(main).toContain('titleBarOverlay:')
+    expect(main).toContain("accentColor: themeValue('--dsw-alias-bg-base'")
+    expect(main).toContain('win.setAccentColor(background)')
+    expect(read('theme-applier.js')).toContain('requestAnimationFrame(() => requestAnimationFrame(resolve))')
+    expect(read('window-theme.css')).toContain('env(titlebar-area-width, 100%)')
+  })
+
+  it('renders plugin ownership groups as accessible collapsible controls', () => {
+    const script = read('plugin-window.js')
+    expect(script).toContain("className = 'bundle-toggle'")
+    expect(script).toContain("setAttribute('aria-expanded'")
+    expect(script).toContain('panel.hidden = collapsed')
+  })
 })

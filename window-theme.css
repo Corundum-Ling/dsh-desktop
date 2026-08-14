@@ -49,6 +49,10 @@ body {
   min-height: 100%;
 }
 
+html:not([data-theme-ready]) body {
+  visibility: hidden;
+}
+
 body {
   height: 100vh;
   overflow: hidden;
@@ -174,9 +178,14 @@ input[type='text']:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  padding: 15px 24px 14px;
+  padding: 15px max(24px, calc(100% - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100%) + 12px)) 14px 24px;
   border-bottom: 1px solid var(--dsw-alias-border-l2);
   background: var(--dsw-alias-bg-layer-1);
+  -webkit-app-region: drag;
+}
+
+.topbar .status {
+  -webkit-app-region: no-drag;
 }
 
 .title-block {
@@ -305,18 +314,57 @@ input[type='text']:focus-visible {
 }
 
 .bundle-group {
+  margin: 0 0 7px;
+}
+
+.bundle-toggle {
+  width: 100%;
+  min-height: 28px;
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 0 0 7px;
+  padding: 3px 2px;
+  border: 0;
+  background: var(--dsw-window-transparent);
   color: var(--dsw-alias-label-tertiary);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.03em;
+  text-align: left;
 }
 
-.bundle-group::after {
-  content: '';
+.bundle-toggle:hover:not(:disabled),
+.bundle-toggle:active:not(:disabled) {
+  background: var(--dsw-window-transparent);
+  color: var(--dsw-alias-label-primary);
+  transform: none;
+}
+
+.bundle-toggle:focus-visible {
+  outline-offset: 1px;
+}
+
+.bundle-chevron {
+  width: 12px;
+  flex: 0 0 12px;
+  font-size: 14px;
+  line-height: 1;
+  text-align: center;
+  transform: rotate(90deg);
+  transition: transform var(--ds-transition-duration) var(--ds-ease-in-out);
+}
+
+.bundle-toggle[aria-expanded='false'] .bundle-chevron {
+  transform: rotate(0deg);
+}
+
+.bundle-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bundle-rule {
   height: 1px;
   flex: 1;
   background: var(--dsw-alias-border-l1);
@@ -617,7 +665,8 @@ pre.output {
   .topbar {
     align-items: flex-start;
     gap: 12px;
-    padding-inline: 18px;
+    padding-left: 18px;
+    padding-right: max(18px, calc(100% - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100%) + 8px));
   }
 
   .status {

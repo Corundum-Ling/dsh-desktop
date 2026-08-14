@@ -6,6 +6,7 @@ const outputEl = document.getElementById('output')
 const countEl = document.getElementById('plugin-count')
 
 let busy = false
+const collapsedGroups = new Set()
 function setStatus(text, isError = false) {
   statusEl.textContent = text
   statusEl.classList.toggle('error', isError)
@@ -40,6 +41,41 @@ function createRowCopy(title, meta) {
   copy.append(titleEl, metaEl)
   return copy
 }
+function createBundleSection(label, count, key, id) {
+  const section = document.createElement('section')
+  section.className = 'bundle-section'
+  const group = document.createElement('div')
+  group.className = 'bundle-group'
+  const toggle = document.createElement('button')
+  toggle.type = 'button'
+  toggle.className = 'bundle-toggle'
+  const panel = document.createElement('div')
+  panel.className = 'list-panel'
+  panel.id = `plugin-group-${id}`
+  const chevron = document.createElement('span')
+  chevron.className = 'bundle-chevron'
+  chevron.textContent = '›'
+  chevron.setAttribute('aria-hidden', 'true')
+  const text = document.createElement('span')
+  text.className = 'bundle-label'
+  text.textContent = `${label} · ${count}`
+  const rule = document.createElement('span')
+  rule.className = 'bundle-rule'
+  rule.setAttribute('aria-hidden', 'true')
+  toggle.setAttribute('aria-controls', panel.id)
+  const setCollapsed = (collapsed) => {
+    panel.hidden = collapsed
+    toggle.setAttribute('aria-expanded', String(!collapsed))
+    if (collapsed) collapsedGroups.add(key)
+    else collapsedGroups.delete(key)
+  }
+  toggle.onclick = () => setCollapsed(!panel.hidden)
+  toggle.append(chevron, text, rule)
+  group.append(toggle)
+  section.append(group, panel)
+  setCollapsed(collapsedGroups.has(key))
+  return { section, panel }
+}
 
 async function refresh() {
   setBusy(true)
@@ -57,15 +93,10 @@ async function refresh() {
       const key = row.bundle || '(未归属)'
       ;(groups[key] ??= []).push(row)
     }
+    let groupIndex = 0
     for (const [bundle, rows] of Object.entries(groups)) {
-      const section = document.createElement('section')
-      section.className = 'bundle-section'
-      const g = document.createElement('div')
-      g.className = 'bundle-group'
-      g.textContent = `${bundle} · ${rows.length}`
-      const panel = document.createElement('div')
-      panel.className = 'list-panel'
-      section.append(g, panel)
+      const { section, panel } = createBundleSection(bundle, rows.length, `bundle:${bundle}`, `bundle-${groupIndex}`)
+      groupIndex += 1
       listEl.append(section)
       for (const row of rows) {
         const item = document.createElement('div')
@@ -153,14 +184,7 @@ async function refresh() {
     }
     // 非 bundle insert 行
     if (view.inserts.length) {
-      const section = document.createElement('section')
-      section.className = 'bundle-section'
-      const g = document.createElement('div')
-      g.className = 'bundle-group'
-      g.textContent = `非 bundle 插件 · ${view.inserts.length}`
-      const panel = document.createElement('div')
-      panel.className = 'list-panel'
-      section.append(g, panel)
+      const { section, panel } = createBundleSection('非 bundle 插件', view.inserts.length, 'inserts', 'inserts')
       listEl.append(section)
       for (const ins of view.inserts) {
         const item = document.createElement('div')
