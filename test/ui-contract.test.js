@@ -36,7 +36,7 @@ describe('secondary window UI contract', () => {
   })
 
   it('uses literal colors only in the fallback token block', () => {
-    const css = read('src/renderer/shared/window-theme.css')
+    const css = read('src/renderer/shared/window-theme.css').replace(/\r\n/g, '\n')
     const rootEnd = css.indexOf('\n}\n', css.indexOf(':root'))
     const rules = css.slice(rootEnd + 3)
     expect(rules).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\s*\(/i)
