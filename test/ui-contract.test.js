@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 const read = (name) => readFileSync(new URL(`../${name}`, import.meta.url), 'utf8')
@@ -52,6 +52,15 @@ describe('secondary window UI contract', () => {
       'theme-probe.cjs',
     ]
     for (const asset of assets) expect(builder).toContain(`- ${asset}`)
+  })
+
+  it('uses the branded icon for the Windows app and installer', () => {
+    const builder = read('electron-builder.yml')
+    expect(existsSync(new URL('../build/icon.ico', import.meta.url))).toBe(true)
+    expect(builder).toContain('icon: build/icon.ico')
+    expect(builder).toContain('installerIcon: build/icon.ico')
+    expect(builder).toContain('uninstallerIcon: build/icon.ico')
+    expect(builder).toContain('installerHeaderIcon: build/icon.ico')
   })
 
   it('keeps secondary windows hidden until their themed first frame is ready', () => {
