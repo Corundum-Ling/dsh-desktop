@@ -12,6 +12,7 @@ files:
   - plugin-window.js
   - src/**
 
+# 耦合约定：to: resources 与 main.js 的 RESOURCES_DIR（process.resourcesPath + '/resources'，Task 5）显性耦合，任一侧改动必须同步另一侧
 # node.exe / pnpm.exe / dsh 必须为磁盘真实文件（asar 虚拟文件系统无法被外部 node.exe 读取）
 extraResources:
   - from: resources
