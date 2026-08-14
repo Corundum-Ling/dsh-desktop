@@ -1,0 +1,84 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { EventEmitter } from 'node:events'
+import { createPluginManager } from '../src/plugin-manager.js'
+
+function fakeRun(result = { code: 0, output: 'done' }) {
+  const calls = []
+  const impl = (cmd, args, opts) => {
+    calls.push({ cmd, args, opts })
+    const child = new EventEmitter()
+    child.stdout = new EventEmitter()
+    child.stderr = new EventEmitter()
+    setTimeout(() => {
+      child.stdout.emit('data', Buffer.from(result.output))
+      child.emit('exit', result.code, null)
+    }, 10)
+    return child
+  }
+  return { impl, calls }
+}
+
+describe('createPluginManager', () => {
+  let baseDir
+
+  beforeEach(() => {
+    baseDir = mkdtempSync(join(tmpdir(), 'dsh-plugins-'))
+    mkdirSync(join(baseDir, 'dsh-home', 'profiles', 'web'), { recursive: true })
+  })
+
+  afterEach(() => {
+    rmSync(baseDir, { recursive: true, force: true })
+  })
+
+  function makePm(spawnImpl) {
+    return createPluginManager({
+      nodePath: 'node.exe', dshEntry: 'dsh.js', dshHome: join(baseDir, 'dsh-home'),
+      env: { PATH: 'C:/bin' }, spawnImpl,
+    })
+  }
+
+  it('listPlugins 返回 profile dependencies', async () => {
+    writeFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'package.json'), JSON.stringify({
+      dependencies: { 'dsh-plugin-aaa': '^1.0.0', 'dsh-plugin-bbb': '^2.0.0' },
+    }))
+    const { impl } = fakeRun()
+    const pm = makePm(impl)
+    const list = await pm.listPlugins()
+    expect(list).toEqual([
+      { name: 'dsh-plugin-aaa', version: '^1.0.0' },
+      { name: 'dsh-plugin-bbb', version: '^2.0.0' },
+    ])
+  })
+
+  it('listPlugins 无 package.json 时返回空数组', async () => {
+    const pm = makePm(fakeRun().impl)
+    expect(await pm.listPlugins()).toEqual([])
+  })
+
+  it('installPlugin 构造 add 命令并返回输出', async () => {
+    const { impl, calls } = fakeRun({ code: 0, output: 'added' })
+    const pm = makePm(impl)
+    const res = await pm.installPlugin('dsh-plugin-ccc')
+    expect(res).toEqual({ ok: true, output: 'added' })
+    expect(calls[0].args).toEqual(['dsh.js', 'plugin', '--profile', 'web', 'add', 'dsh-plugin-ccc'])
+    expect(calls[0].opts.env.PATH).toBe('C:/bin')
+  })
+
+  it('installPlugin 失败时 ok=false', async () => {
+    const { impl } = fakeRun({ code: 1, output: 'pnpm error: allowBuilds' })
+    const pm = makePm(impl)
+    const res = await pm.installPlugin('github:user/repo')
+    expect(res.ok).toBe(false)
+    expect(res.output).toContain('allowBuilds')
+  })
+
+  it('removePlugin 构造 remove 命令', async () => {
+    const { impl, calls } = fakeRun()
+    const pm = makePm(impl)
+    await pm.removePlugin('dsh-plugin-aaa')
+    expect(calls[0].args).toEqual(['dsh.js', 'plugin', '--profile', 'web', 'remove', 'dsh-plugin-aaa'])
+  })
+})
