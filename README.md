@@ -22,7 +22,7 @@
 - 内置运行时，启动后仅在本机回环地址 `127.0.0.1` 提供服务。
 - 顶部入口提供插件管理、社区插件市场和 profile 环境管理。
 - 插件按 bundle 分组显示，支持配置行启停、npm/Git 安装和非核心组件卸载。
-- 插件市场读取 [awesome-dsh-plugins](https://github.com/AdamPlatin123/awesome-dsh-plugins)，支持搜索、缓存和一键安装。
+- 插件市场读取 [awesome-dsh-plugins](https://github.com/AdamPlatin123/awesome-dsh-plugins) 完整生态目录，支持搜索、类型与分类筛选、详情查看、缓存和兼容插件安装。
 - 支持创建、复制、重命名、删除和切换 Web profile。
 - 管理窗口跟随 dsh 的亮色、暗色和插件主题。
 - 单实例运行；dsh 异常退出时最多自动重启两次。
@@ -73,17 +73,19 @@ DeepSeek Harness 是本地 Agent 系统，不是只读聊天客户端。根据�
 
 插件市场中的“已验证”来自社区列表标记。本桌面应用没有因此完成代码审计、签名验证、哈希固定或持续安全背书。
 
+从插件市场安装前，桌面端会检查仓库根目录的 `package.json` 和 `dsh.bundle` manifest；需要运行 `prepare` 构建脚本时，还会要求用户对当前 profile 中的精确包名单独授权。
+
 ## Profile 环境
 
 环境管理支持创建、复制、重命名、删除和切换 Web profile。切换 profile 会重启 dsh。
 
 请注意：
 
-- 应用每次启动默认进入 `web` profile，不恢复上次选择。
-- UI 当前只能创建 Web profile。
+- 应用冷启动时恢复最后一次成功使用的 profile；如果该 profile 不存在或启动失败，则回退到 `web`。
+- UI 当前只能创建 Web profile；新建 profile 使用空依赖的最小模板。
 - 删除 profile 不经过回收站，操作不可撤销。
 - 不要重命名或删除正在运行的 profile；当前版本不会完整同步运行状态。
-- 复制大型 profile 会复制其本地依赖，操作期间窗口可能短暂无响应。
+- 复制 profile 会保留配置和依赖声明，但不会复制 `node_modules`；切换后安装插件时会为目标 profile 单独准备依赖。
 
 操作前建议备份 `%APPDATA%\DeepSeekHarness\dsh-home\profiles\`。
 

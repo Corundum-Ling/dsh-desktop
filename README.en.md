@@ -22,7 +22,7 @@ An unofficial DeepSeek Harness desktop wrapper for Windows x64. The installer bu
 - Bundles its runtime and serves dsh only on the local loopback address, `127.0.0.1`.
 - Adds title-bar entry points for plugin management, the community plugin marketplace, and profile management.
 - Groups plugins by bundle and supports configuration toggles, npm/Git installation, and removal of non-core components.
-- Reads [awesome-dsh-plugins](https://github.com/AdamPlatin123/awesome-dsh-plugins) with search, caching, and one-click installation.
+- Reads the complete [awesome-dsh-plugins](https://github.com/AdamPlatin123/awesome-dsh-plugins) ecosystem catalog with search, type and category filters, details, caching, and compatible plugin installation.
 - Creates, copies, renames, removes, and switches Web profiles.
 - Synchronizes management windows with dsh light, dark, and plugin themes.
 - Enforces a single application instance and retries a crashed dsh process up to two times.
@@ -73,17 +73,19 @@ Third-party plugins are not sandboxed extensions. They run with the current Wind
 
 The marketplace's “verified” state comes from the community list. It does not mean this desktop project performed a code audit, signature verification, hash pinning, or continuous security review.
 
+Before a marketplace installation, the desktop app checks the repository-root `package.json` and its `dsh.bundle` manifest. If the package requires a `prepare` build script, the user must separately approve that exact package name for the current profile.
+
 ## Profile environments
 
 Environment Manager can create, copy, rename, remove, and switch Web profiles. Switching profiles restarts dsh.
 
 Current constraints:
 
-- Every application start uses the `web` profile; the previous selection is not restored.
-- The UI can create Web profiles only.
+- On a cold start, the application restores the last successfully used profile; if that profile is missing or fails to start, it falls back to `web`.
+- The UI can create Web profiles only; each new profile starts from a minimal template with no dependencies.
 - Profile removal bypasses the Recycle Bin and cannot be undone.
 - Do not rename or remove the active profile. This release does not fully synchronize that change with the running service.
-- Copying a large profile also copies local dependencies and may briefly block the window.
+- Copying a profile preserves its configuration and dependency declarations but excludes `node_modules`; later plugin installation prepares dependencies separately for the target profile.
 
 Back up `%APPDATA%\DeepSeekHarness\dsh-home\profiles\` before destructive operations.
 

@@ -90,6 +90,7 @@ describe('createPluginManager', () => {
     const profileDir = join(baseDir, 'dsh-home', 'profiles', 'web')
     const modulesDir = join(profileDir, 'node_modules')
     const file = join(modulesDir, '.modules.yaml')
+    mkdirSync(modulesDir, { recursive: true })
     writeFileSync(file, 'nodeLinker: hoisted\nvirtualStoreDir: C:\\source\\web\\node_modules\\.pnpm\n')
     expect(repairVirtualStoreLocation(profileDir)).toBe(true)
     expect(readFileSync(file, 'utf8')).toContain(`virtualStoreDir: ${join(profileDir, 'node_modules', '.pnpm')}`)
