@@ -38,7 +38,7 @@ describe('DshService', () => {
     })
     await service.start()
     expect(seen.cmd).toBe('node.exe')
-    expect(seen.args).toEqual(['dsh.js', '--profile', 'web', '--port', '3080'])
+    expect(seen.args).toEqual(['dsh.js', '--profile', 'web', '--port', '3080', '--no-open'])
     expect(seen.opts.cwd).toBeDefined()
     expect(seen.opts.env.DSH_HOME).toBe('C:/dsh-home')
     expect(seen.opts.env.PATH).toBe('C:/bin')
@@ -71,7 +71,7 @@ describe('DshService', () => {
       spawnImpl: (cmd, args, opts) => { Object.assign(seen, { args }); return child },
     })
     await service.start()
-    expect(seen.args).toEqual(['dsh.js', '--profile', 'work', '--port', '3080'])
+    expect(seen.args).toEqual(['dsh.js', '--profile', 'work', '--port', '3080', '--no-open'])
   })
 
   it('restart 传入 profile 会切换并重建', async () => {
@@ -84,7 +84,7 @@ describe('DshService', () => {
     await service.start()
     await service.restart('work')
     expect(service.profile).toBe('work')
-    expect(seen[1]).toEqual(['dsh.js', '--profile', 'work', '--port', '3080'])
+    expect(seen[1]).toEqual(['dsh.js', '--profile', 'work', '--port', '3080', '--no-open'])
   })
 
   it('stop 调用 kill 并等退出', async () => {

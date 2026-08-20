@@ -20,6 +20,8 @@ const requiredPackagedEntries = [
   'resources/licenses/pnpm-embedded-node-LICENSE.txt',
   'resources/licenses/pnpm-LICENSE.txt',
   'resources/dsh/node_modules/@deepseek-ai/dsh/package.json',
+  'resources/dsh/node_modules/@deepseek-ai/dsh-subprocess-local/package.json',
+  'resources/dsh/node_modules/node-pty/prebuilds/win32-x64/conpty.node',
 ]
 const packagedTrees = ['src', 'resources/licenses', 'resources/dsh']
 const expectedLicenseBlobs = new Map([
@@ -110,8 +112,8 @@ if (existsSync(resolve(root, 'resources/bin/pnpm.exe'))) {
   }
 }
 const dshMarker = resolve(root, 'resources/dsh/node_modules/@deepseek-ai/dsh/package.json')
-if (existsSync(dshMarker) && JSON.parse(readFileSync(dshMarker, 'utf8')).version !== '0.1.0-rc.6') {
-  integrityFailures.push('resources/dsh/node_modules/@deepseek-ai/dsh/package.json (expected 0.1.0-rc.6)')
+if (existsSync(dshMarker) && JSON.parse(readFileSync(dshMarker, 'utf8')).version !== '0.1.0-rc.8') {
+  integrityFailures.push('resources/dsh/node_modules/@deepseek-ai/dsh/package.json (expected 0.1.0-rc.8)')
 }
 
 const pathFailures = files.filter((file) => forbiddenPaths.some((pattern) => pattern.test(file)))

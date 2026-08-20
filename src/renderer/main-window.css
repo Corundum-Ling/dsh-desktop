@@ -79,3 +79,120 @@ body {
 .dsh-desktop-titlebar-nav button:focus-visible {
   outline: 2px solid var(--dsw-alias-brand-primary, #0f1115);
 }
+
+#dsh-desktop-update-backdrop {
+  position: fixed;
+  z-index: 2147483646;
+  inset: var(--dsh-desktop-titlebar-height) 0 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 17, 21, 0.32);
+  -webkit-app-region: no-drag;
+}
+
+#dsh-desktop-update-backdrop[hidden] {
+  display: none;
+}
+
+#dsh-desktop-update-dialog {
+  width: min(440px, 100%);
+  padding: 28px;
+  border: 1px solid var(--dsw-alias-border-l2, rgba(0, 0, 0, 0.1));
+  border-radius: 8px;
+  outline: 0;
+  background: var(--dsw-alias-bg-layer-1, #ffffff);
+  box-shadow: 0 18px 50px rgba(15, 17, 21, 0.18);
+  color: var(--dsw-alias-label-primary, #0f1115);
+  font-family: var(--dsw-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+}
+
+.dsh-desktop-update-kicker {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--dsw-alias-label-tertiary, #81858c);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+#dsh-desktop-update-title {
+  margin: 0 0 14px;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.35;
+}
+
+#dsh-desktop-update-message,
+#dsh-desktop-update-detail {
+  margin: 0;
+  line-height: 1.6;
+}
+
+#dsh-desktop-update-message {
+  color: var(--dsw-alias-label-primary, #0f1115);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+#dsh-desktop-update-detail {
+  margin-top: 6px;
+  color: var(--dsw-alias-label-secondary, #61666b);
+  font-size: 12px;
+}
+
+#dsh-desktop-update-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+#dsh-desktop-update-actions button {
+  min-height: 34px;
+  padding: 5px 14px;
+  border: 1px solid var(--dsw-alias-border-l2, rgba(0, 0, 0, 0.1));
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-3, #ffffff);
+  color: var(--dsw-alias-label-secondary, #61666b);
+  font: inherit;
+  cursor: pointer;
+}
+
+#dsh-desktop-update-actions button:hover {
+  background: var(--dsw-alias-interactive-bg-hover, rgba(38, 49, 72, 0.06));
+  color: var(--dsw-alias-label-primary, #0f1115);
+}
+
+#dsh-desktop-update-actions button.primary {
+  border-color: var(--dsw-alias-button-primary-fill, #0f1115);
+  background: var(--dsw-alias-button-primary-fill, #0f1115);
+  color: var(--dsw-alias-label-primary-foreground, #ffffff);
+}
+
+#dsh-desktop-update-actions button.primary:hover {
+  border-color: var(--dsw-alias-button-primary-hover, #43454a);
+  background: var(--dsw-alias-button-primary-hover, #43454a);
+  color: var(--dsw-alias-label-primary-foreground, #ffffff);
+}
+
+#dsh-desktop-update-actions button:focus-visible,
+#dsh-desktop-update-dialog:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary, #0f1115);
+  outline-offset: 2px;
+}
+
+@media (max-width: 560px) {
+  #dsh-desktop-update-dialog {
+    padding: 22px;
+  }
+
+  #dsh-desktop-update-actions {
+    flex-direction: column-reverse;
+  }
+
+  #dsh-desktop-update-actions button {
+    width: 100%;
+  }
+}

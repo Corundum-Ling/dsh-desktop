@@ -19,7 +19,7 @@ export class DshService extends EventEmitter {
 
   start() {
     return new Promise(async (resolve, reject) => {
-      const args = [this.dshEntry, '--profile', this.profile, '--port', String(this.port)]
+      const args = [this.dshEntry, '--profile', this.profile, '--port', String(this.port), '--no-open']
       const child = this.spawnImpl(this.nodePath, args, {
         cwd: process.cwd(),
         env: { ...process.env, ...this.env, DSH_HOME: this.dshHome },

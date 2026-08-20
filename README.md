@@ -10,8 +10,8 @@
 
 | 组件 | 版本 |
 |---|---|
-| DeepSeek Harness Desktop | `0.1.0` |
-| `@deepseek-ai/dsh` | `0.1.0-rc.6` |
+| DeepSeek Harness Desktop | `0.1.1` |
+| `@deepseek-ai/dsh` | `0.1.0-rc.8` |
 | Node.js | `24.4.0` |
 | pnpm | `10.8.0` |
 | pnpm 独立程序内置 Node.js | `20.11.1` |
@@ -35,11 +35,11 @@
 - 模型调用、插件市场和插件安装需要网络连接。
 - 需要自行准备模型提供方的 API Key。当前快速开始以 DeepSeek API 为例。
 
-当前只提供 NSIS 安装包，没有 portable 版本，也没有自动更新。
+当前只提供 NSIS 安装包，没有 portable 版本。
 
 ## 下载与安装
 
-1. 从 GitHub Releases 下载 `DeepSeek Harness Setup 0.1.0.exe`。
+1. 从 GitHub Releases 下载 `DeepSeek Harness Setup 0.1.1.exe`。
 2. 运行安装器并选择安装目录。
 3. 安装器会创建桌面和开始菜单快捷方式。
 
@@ -63,7 +63,7 @@ DeepSeek Harness 是本地 Agent 系统，不是只读聊天客户端。根据�
 
 ### 非 Bundle 插件
 
-内置 dsh `0.1.0-rc.6` 已确认无法激活没有 `dsh.bundle` manifest 的 insert 插件。桌面端可以安装依赖并保留 `cordis.patch.yml` 挂载配置，但插件功能当前不可用。该配置只为未来的上游兼容保留。
+内置 dsh `0.1.0-rc.8` 仍未确认可以激活没有 `dsh.bundle` manifest 的 insert 插件。桌面端可以安装依赖并保留 `cordis.patch.yml` 挂载配置；在未完成真实验证前，继续按不可用处理。
 
 对非 bundle 行执行“卸载”时，桌面端可能只移除挂载配置，依赖文件仍可能保留在对应 profile 中。
 
@@ -91,11 +91,11 @@ DeepSeek Harness 是本地 Agent 系统，不是只读聊天客户端。根据�
 
 - 仅支持 Windows x64。
 - 安装包未签名，SmartScreen 会显示未知发布者。
-- 没有自动更新。
+- 启动后每天最多自动检查一次本项目的稳定版更新；更新需用户确认后前往 GitHub Release 页面下载安装。
 - 内置 dsh 是 RC 预览版本，上游升级可能产生破坏性变更。
 - 本地端口只在 `3080-3090` 范围内选择。
 - 启动等待上限为 30 秒。
-- 非 bundle 插件在内置 dsh 版本中不可用。
+- 非 bundle 插件在内置 dsh 版本中默认按不可用处理。
 - profile 管理仍有上述运行状态限制。
 - 关闭所有应用窗口会停止本地 dsh 服务，不提供托盘常驻。
 
@@ -112,9 +112,9 @@ npm start
 npm run dist
 ```
 
-`prepare:resources` 下载并准备固定版本的 Node.js、pnpm、dsh，以及两个 Node.js 运行时和 pnpm 的官方许可原文。pnpm 的 Windows 独立程序自身内置 Node.js `20.11.1`。生成内容保存在被 Git 忽略的 `resources/` 中。
+`prepare:resources` 下载并准备固定版本的 Node.js、pnpm、dsh，以及两个 Node.js 运行时和 pnpm 的官方许可原文。pnpm 的 Windows 独立程序自身内置 Node.js `20.11.1`。生成内容保存在被 Git 忽略的 `resources/` 中。dsh 升级先在临时目录完成安装和版本校验，再替换旧资源，失败时保留旧版本。
 
-资源脚本会验证已有 Node.js、pnpm（含其内置 Node.js）和 dsh 的版本，并核对许可原文的固定上游 Git blob 哈希。升级任一内置组件时，仍应先备份并清理对应的 `resources/` 子目录，再运行资源准备命令；公开构建还应核对运行时下载来源和哈希。
+资源脚本会验证已有 Node.js、pnpm（含其内置 Node.js）和 dsh 的版本，并核对许可原文的固定上游 Git blob 哈希。升级任一内置组件时，仍应先备份用户数据，再运行资源准备命令；公开构建还应核对运行时下载来源和哈希。
 
 安装包输出到 `dist/DeepSeek Harness Setup <版本>.exe`。`npm run dist` 会先自动执行发布门禁，检查 Git 候选文件和实际打包资源中的敏感路径及常见凭证格式。发布时只上传安装器、SHA-256、发布说明和必要许可文件，不要上传 `dist/win-unpacked` 或 `builder-debug.yml`。
 

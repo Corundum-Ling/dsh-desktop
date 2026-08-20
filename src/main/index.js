@@ -11,6 +11,8 @@ import { createMarketplace } from './services/marketplace.js'
 import { createProfileService } from './services/profile-service.js'
 import { runDumpConfig } from './services/dump-config.js'
 import { buildEnv } from './services/main-env.js'
+import { createUpgradeGuard } from './services/upgrade-guard.js'
+import { createUpdateService } from './services/update-service.js'
 
 // ESM 下没有全局 __dirname，用 import.meta.url 推导
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -34,6 +36,7 @@ let restartCount = 0
 let logStream = null
 let quitting = false
 let manualRestart = false
+let pendingUpdateRelease = null
 // themeState 占位（Task 9 主题同步完善其内容与广播）
 let themeState = { isDark: false, variables: {} }
 
@@ -206,6 +209,23 @@ function openChildWindow(kind) {
   childWindow.on('closed', () => { childWindows[kind] = null })
 }
 
+async function checkForUpdates(updateService, isManual = false) {
+  const result = await updateService.check({ force: isManual })
+  if (result.status === 'available') {
+    pendingUpdateRelease = result.release
+    return {
+      status: 'available',
+      currentVersion: `v${app.getVersion()}`,
+      latestVersion: result.release.tag_name,
+    }
+  }
+  if (!isManual || result.status === 'skipped') return null
+  pendingUpdateRelease = null
+  if (result.status === 'error') return { status: 'error', message: '暂时无法检查更新，请检查网络后重试。' }
+  if (result.status === 'rate-limited') return { status: 'error', message: 'GitHub 请求次数受限，请稍后重试。' }
+  return { status: 'current', currentVersion: `v${app.getVersion()}` }
+}
+
 // 锁定 userData 目录名为 %APPDATA%\DeepSeekHarness 与 spec 契约一致：
 // package.json 无 productName 时 app.name 回退到 name（dsh-desktop），
 // 而 electron-builder 的 productName 不影响 userData，故必须在
@@ -225,6 +245,13 @@ if (!gotLock) {
 
   app.whenReady().then(async () => {
     const config = createConfig(app.getPath('userData'))
+    const upgradeGuard = createUpgradeGuard({
+      baseDir: app.getPath('userData'),
+      dshHome: config.dshHome(),
+      config,
+      isPackaged: app.isPackaged,
+      version: app.getVersion(),
+    })
     const env = buildEnv({
       DSH_HOME: config.dshHome(),
       binDir: join(RESOURCES_DIR, 'bin'),
@@ -247,27 +274,45 @@ if (!gotLock) {
     })
     const mk = createMarketplace({ fetchImpl: fetchPluginsMd, cacheDir: join(config.dshHome(), '..', 'marketplace-cache') })
     const pf = createProfileService({ dshHome: config.dshHome() })
+    const updateService = createUpdateService({ currentVersion: app.getVersion(), config })
 
     try {
+      upgradeGuard.prepare()
       await startDsh(config)
     } catch (err) {
-      dialog.showErrorBox('dsh 启动失败', `${err.message}\n\n日志位置: ${join(config.logsDir(), 'dsh.log')}`)
+      dialog.showErrorBox('无法安全启动', `${err.message}\n\n原始用户数据未修改。`)
       app.exit(1)
       return
     }
+    upgradeGuard.markSuccessful()
 
     createMainWindow()
 
-    // 菜单平铺：v2 起去掉"应用"下拉，顶层直接五项
+    // 菜单平铺：v2 起去掉"应用"下拉，仅增加更新检查入口
     Menu.setApplicationMenu(Menu.buildFromTemplate([
       { label: '插件管理', click: () => openChildWindow('plugin') },
       { label: '插件市场', click: () => openChildWindow('marketplace') },
       { label: '环境管理', click: () => openChildWindow('env') },
+      { label: '检查更新', click: async () => {
+        const result = await checkForUpdates(updateService, true)
+        if (result && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('update:result', result)
+      } },
       { type: 'separator' },
       { label: '打开日志目录', click: () => shell.openPath(join(config.logsDir())) },
       { type: 'separator' },
       { role: 'quit', label: '退出' },
     ]))
+
+    if (app.isPackaged) {
+      setTimeout(async () => {
+        try {
+          const result = await checkForUpdates(updateService)
+          if (result && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('update:result', result)
+        } catch (err) {
+          try { logStream.write(`\n[dsh-desktop] update check failed: ${err.message}\n`) } catch {}
+        }
+      }, 0)
+    }
 
     globalThis.__pluginManager = pm
     // 统一重启入口：不带参重启当前 profile；带参（profiles:switch）切换 profile 重建
@@ -319,6 +364,17 @@ if (!gotLock) {
     ipcMain.on('window:open', (event, kind) => {
       if (event.sender !== mainWindow?.webContents) return
       if (kind === 'plugin' || kind === 'marketplace' || kind === 'env') openChildWindow(kind)
+    })
+    ipcMain.handle('update:check', async (event) => {
+      if (event.sender !== mainWindow?.webContents) return null
+      return checkForUpdates(updateService, true)
+    })
+    ipcMain.on('update:action', (event, action) => {
+      if (event.sender !== mainWindow?.webContents || !pendingUpdateRelease) return
+      const release = pendingUpdateRelease
+      pendingUpdateRelease = null
+      if (action === 'download') shell.openExternal(release.html_url)
+      if (action === 'ignore') updateService.ignore(release.tag_name)
     })
     ipcMain.handle('theme:get', () => themeState)
     // 主题广播：主窗口探针上报（MutationObserver + 2s 轮询兜底），实时推给所有子窗口

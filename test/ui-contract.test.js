@@ -95,6 +95,21 @@ describe('secondary window UI contract', () => {
     expect(main).toContain("ipcMain.on('window:open'")
   })
 
+  it('keeps user data stable and exposes only the update menu entry', () => {
+    const builder = read('electron-builder.yml')
+    const main = read('src/main/index.js')
+    expect(builder).toContain('appId: com.corundum.dsh-desktop')
+    expect(builder).toContain('deleteAppDataOnUninstall: false')
+    expect(main).toContain("app.setName('DeepSeekHarness')")
+    expect(main).toContain("{ label: '检查更新'")
+    expect(main).toContain("ipcMain.handle('update:check'")
+    expect(main).toContain("ipcMain.on('update:action'")
+    expect(read('src/preload/theme-probe.cjs')).toContain("updateButton.textContent = '检查更新'")
+    expect(read('src/preload/theme-probe.cjs')).toContain("dialog.setAttribute('aria-modal', 'true')")
+    expect(read('src/renderer/main-window.css')).toContain('#dsh-desktop-update-dialog')
+    expect(main).not.toContain('打开数据备份目录')
+  })
+
   it('renders plugin ownership groups as accessible collapsible controls', () => {
     const script = read('src/renderer/plugin/index.js')
     expect(script).toContain("className = 'bundle-toggle'")

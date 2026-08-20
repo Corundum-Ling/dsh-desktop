@@ -10,8 +10,8 @@ An unofficial DeepSeek Harness desktop wrapper for Windows x64. The installer bu
 
 | Component | Version |
 |---|---|
-| DeepSeek Harness Desktop | `0.1.0` |
-| `@deepseek-ai/dsh` | `0.1.0-rc.6` |
+| DeepSeek Harness Desktop | `0.1.1` |
+| `@deepseek-ai/dsh` | `0.1.0-rc.8` |
 | Node.js | `24.4.0` |
 | pnpm | `10.8.0` |
 | Node.js embedded in the pnpm standalone executable | `20.11.1` |
@@ -35,11 +35,11 @@ An unofficial DeepSeek Harness desktop wrapper for Windows x64. The installer bu
 - A network connection for model requests, the plugin marketplace, and plugin installation.
 - Your own API key for a supported model provider. The quick start below uses the DeepSeek API as an example.
 
-The project currently ships an NSIS installer only. There is no portable build or automatic updater.
+The project currently ships an NSIS installer only. There is no portable build.
 
 ## Download and installation
 
-1. Download `DeepSeek Harness Setup 0.1.0.exe` from GitHub Releases.
+1. Download `DeepSeek Harness Setup 0.1.1.exe` from GitHub Releases.
 2. Run the installer and choose an installation directory.
 3. The installer creates Desktop and Start Menu shortcuts.
 
@@ -63,7 +63,7 @@ Plugins with a `dsh.bundle` manifest are loaded by the dsh bundle system. The de
 
 ### Non-bundle plugins
 
-The bundled dsh `0.1.0-rc.6` cannot activate insert plugins that do not provide a `dsh.bundle` manifest. The desktop app can install the dependency and retain its mount entry in `cordis.patch.yml`, but the plugin is not functional with this dsh version. The entry is retained only for possible future upstream compatibility.
+The bundled dsh `0.1.0-rc.8` has not been confirmed to activate insert plugins that do not provide a `dsh.bundle` manifest. The desktop app can install the dependency and retain its mount entry in `cordis.patch.yml`; until real verification is complete, such plugins are treated as unavailable.
 
 Removing a non-bundle row may remove only its mount configuration. Dependency files can remain in the corresponding profile.
 
@@ -91,11 +91,11 @@ Back up `%APPDATA%\DeepSeekHarness\dsh-home\profiles\` before destructive operat
 
 - Windows x64 only.
 - Unsigned installer with an Unknown Publisher warning.
-- No automatic updates.
+- Checks for a stable release update at most once per day after startup; downloading remains a user-confirmed action on the GitHub Release page.
 - The bundled dsh release is an RC developer preview and may introduce breaking changes.
 - Local ports are selected only from `3080-3090`.
 - Startup waits up to 30 seconds.
-- Non-bundle plugins do not work with the bundled dsh version.
+- Non-bundle plugins are treated as unavailable by default with the bundled dsh version until verified against it.
 - Profile management has the active-profile constraints described above.
 - Closing every application window stops the local dsh service; there is no tray mode.
 
@@ -112,9 +112,9 @@ npm start
 npm run dist
 ```
 
-`prepare:resources` downloads pinned versions of Node.js, pnpm, dsh, and the official license texts for both Node.js runtimes and pnpm into the Git-ignored `resources/` directory. The standalone Windows pnpm executable itself embeds Node.js `20.11.1`.
+`prepare:resources` downloads pinned versions of Node.js, pnpm, dsh, and the official license texts for both Node.js runtimes and pnpm into the Git-ignored `resources/` directory. The standalone Windows pnpm executable itself embeds Node.js `20.11.1`. dsh upgrades are installed and verified in a staging directory before the previous resource tree is replaced.
 
-The resource script validates the existing Node.js, pnpm (including its embedded Node.js), and dsh versions, and checks the license texts against pinned upstream Git blob hashes. Before upgrading a bundled component, still back up and clear its corresponding `resources/` subdirectory, then prepare it again. Public builds should also verify runtime download sources and hashes.
+The resource script validates the existing Node.js, pnpm (including its embedded Node.js), and dsh versions, and checks the license texts against pinned upstream Git blob hashes. Back up user data before upgrading a bundled component. Public builds should also verify runtime download sources and hashes.
 
 The installer is written to `dist/DeepSeek Harness Setup <version>.exe`. `npm run dist` automatically runs the release gate first, checking Git candidates and packaged resources for sensitive paths and common credential formats. Release only the installer, its SHA-256, release notes, and required license material. Do not publish `dist/win-unpacked` or `builder-debug.yml`.
 

@@ -6,7 +6,7 @@ DeepSeek Harness Desktop distributes third-party software. Each component remain
 
 | Component | Bundled version | License | Source |
 |---|---:|---|---|
-| DeepSeek Harness (`@deepseek-ai/dsh`) | `0.1.0-rc.6` | MIT | <https://github.com/deepseek-ai/deepseek-harness> |
+| DeepSeek Harness (`@deepseek-ai/dsh`) | `0.1.0-rc.8` | MIT | <https://github.com/deepseek-ai/deepseek-harness> |
 | Node.js | `24.4.0` | MIT and bundled third-party licenses | <https://github.com/nodejs/node> |
 | pnpm executable | `10.8.0` | MIT | <https://github.com/pnpm/pnpm> |
 | Node.js runtime embedded in the pnpm standalone executable | `20.11.1` | MIT and bundled third-party licenses | <https://github.com/nodejs/node> |

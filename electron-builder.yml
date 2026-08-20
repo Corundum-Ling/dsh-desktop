@@ -36,5 +36,6 @@ nsis:
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: DeepSeek Harness
+  deleteAppDataOnUninstall: false
 
 npmRebuild: false
