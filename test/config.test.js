@@ -26,6 +26,12 @@ describe('createConfig', () => {
     expect(createConfig(baseDir).get('port')).toBe(3099)
   })
 
+  it('lastProfile 可跨进程配置实例持久化', () => {
+    const cfg = createConfig(baseDir)
+    cfg.set('lastProfile', 'desktop')
+    expect(createConfig(baseDir).get('lastProfile', 'web')).toBe('desktop')
+  })
+
   it('set 持久化到 config.json 文件', () => {
     const cfg = createConfig(baseDir)
     cfg.set('port', 3099)

@@ -341,7 +341,16 @@ if (!gotLock) {
 
     try {
       upgradeGuard.prepare()
-      await startDsh(config)
+      const savedProfile = String(config.get('lastProfile', 'web'))
+      const startupProfile = pf.listProfiles().some(profile => profile.name === savedProfile) ? savedProfile : 'web'
+      try {
+        await startDsh(config, startupProfile)
+      } catch (err) {
+        if (startupProfile === 'web') throw err
+        try { logStream?.write(`\n[dsh-desktop] profile ${startupProfile} 恢复失败，回退 web: ${err.message}\n`) } catch {}
+        await startDsh(config, 'web')
+      }
+      config.set('lastProfile', service.profile)
     } catch (err) {
       dialog.showErrorBox('无法安全启动', `${err.message}\n\n原始用户数据未修改。`)
       app.exit(1)
@@ -444,6 +453,7 @@ if (!gotLock) {
         try { await globalThis.__restartDsh(old) } catch { /* 回滚失败也上报 */ }
         throw err
       }
+      config.set('lastProfile', service.profile)
       return { ok: true }
     })
     // 手动/自动重启当前 dsh（#1 用户反馈：bundle 插件装/卸后需要重启生效，
