@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync, mkdirSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { spawn } from 'node:child_process'
 import { EventEmitter } from 'node:events'
-import { createPluginManager, toResult } from '../src/main/services/plugin-manager.js'
+import { createPluginManager, repairVirtualStoreLocation, toResult } from '../src/main/services/plugin-manager.js'
 
 // 与 dsh-service 测试的 makeFakeChild 同构：EventEmitter child + stdout/stderr 事件源，
 // 先 emit 'data' 再 emit 'close'（输出收全用 close 而非 exit）。
@@ -84,6 +84,15 @@ describe('createPluginManager', () => {
     const pm = makePm(impl)
     await pm.removePlugin('dsh-plugin-aaa')
     expect(calls[0].args).toEqual(['dsh.js', 'plugin', '--profile', 'web', 'remove', 'dsh-plugin-aaa'])
+  })
+
+  it('repairVirtualStoreLocation 修复复制 profile 残留的源路径', () => {
+    const profileDir = join(baseDir, 'dsh-home', 'profiles', 'web')
+    const modulesDir = join(profileDir, 'node_modules')
+    const file = join(modulesDir, '.modules.yaml')
+    writeFileSync(file, 'nodeLinker: hoisted\nvirtualStoreDir: C:\\source\\web\\node_modules\\.pnpm\n')
+    expect(repairVirtualStoreLocation(profileDir)).toBe(true)
+    expect(readFileSync(file, 'utf8')).toContain(`virtualStoreDir: ${join(profileDir, 'node_modules', '.pnpm')}`)
   })
 })
 

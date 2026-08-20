@@ -1,6 +1,17 @@
 import { spawn } from 'node:child_process'
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
+
+export function repairVirtualStoreLocation(profileDir) {
+  const modulesFile = join(profileDir, 'node_modules', '.modules.yaml')
+  if (!existsSync(modulesFile)) return false
+  const content = readFileSync(modulesFile, 'utf8')
+  const expected = join(profileDir, 'node_modules', '.pnpm')
+  const next = content.replace(/^virtualStoreDir:\s*.+$/m, `virtualStoreDir: ${expected}`)
+  if (next === content) return false
+  writeFileSync(modulesFile, next, 'utf8')
+  return true
+}
 
 // 事件转 Promise：监听 close（所有 stdio 关闭后触发，保证输出收全）而非 exit；
 // error 先到先得幂等；超时后 kill 子进程并中止。
@@ -38,6 +49,7 @@ export function createPluginManager({ nodePath, dshEntry, dshHome, env, profile 
   }
 
   async function runPluginCmd(args) {
+    repairVirtualStoreLocation(profileDir())
     const child = spawnImpl(nodePath, args, {
       env: { ...process.env, ...env },
       stdio: ['ignore', 'pipe', 'pipe'],

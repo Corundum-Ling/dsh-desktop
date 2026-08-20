@@ -1,5 +1,28 @@
-import { readdirSync, readFileSync, writeFileSync, existsSync, rmSync, cpSync, renameSync } from 'node:fs'
-import { join } from 'node:path'
+import { readdirSync, readFileSync, writeFileSync, existsSync, rmSync, cpSync, renameSync, mkdirSync } from 'node:fs'
+import { basename, join } from 'node:path'
+
+function copyProfileFiles(source, destination) {
+  cpSync(source, destination, {
+    recursive: true,
+    filter: path => basename(path) !== 'node_modules',
+  })
+}
+
+const PROFILE_PATCH_TEMPLATE = `# Your patch layer for this dsh profile, applied after every bundle layer:
+# a top-level YAML array of loader patch entries.
+[]
+`
+
+const PROFILE_PNPM_WORKSPACE = `packages:
+  - .
+
+nodeLinker: hoisted
+autoInstallPeers: false
+`
+
+function assertProfileName(name) {
+  if (!/^[A-Za-z0-9_-]+$/.test(name) || name.toLowerCase() === 'node_modules') throw new Error(`非法 profile 名: ${name}`)
+}
 
 export function createProfileService({ dshHome }) {
   const profilesDir = join(dshHome, 'profiles')
@@ -7,7 +30,7 @@ export function createProfileService({ dshHome }) {
   function listProfiles() {
     if (!existsSync(profilesDir)) return []
     return readdirSync(profilesDir, { withFileTypes: true })
-      .filter(e => e.isDirectory())
+      .filter(e => e.isDirectory() && e.name.toLowerCase() !== 'node_modules')
       .map(e => {
         const pkgFile = join(profilesDir, e.name, 'package.json')
         let bundles = []
@@ -21,29 +44,28 @@ export function createProfileService({ dshHome }) {
   }
 
   function createProfile(name, template = 'web') {
-    if (!/^[A-Za-z0-9_-]+$/.test(name)) throw new Error(`非法 profile 名: ${name}`)
-    const src = join(profilesDir, template)
+    assertProfileName(name)
     const dest = join(profilesDir, name)
     if (existsSync(dest)) throw new Error(`profile 已存在: ${name}`)
-    if (!existsSync(src)) throw new Error(`模板 profile 不存在: ${template}`)
-    // 先验证模板可解析，失败不留下孤儿目录
-    const srcPkgFile = join(src, 'package.json')
-    const srcPkg = JSON.parse(readFileSync(srcPkgFile, 'utf8'))
-    cpSync(src, dest, { recursive: true })
-    // 覆盖默认 bundles（spec §4.5）：headless 模板 → headless bundle，其余 → web-app
-    if (!srcPkg.dsh) srcPkg.dsh = {}
-    if (!srcPkg.dsh.profile) srcPkg.dsh.profile = {}
-    srcPkg.dsh.profile.bundles = template === 'headless'
+    const bundles = template === 'headless'
       ? ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-headless']
       : ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app']
-    // 改 name
-    srcPkg.name = `dsh-profile-${name}`
-    writeFileSync(join(dest, 'package.json'), JSON.stringify(srcPkg, null, 2) + '\n', 'utf8')
+    const manifest = {
+      name: `dsh-profile-${name}`,
+      private: true,
+      dependencies: {},
+      dsh: { profile: { bundles } },
+    }
+    mkdirSync(dest, { recursive: true })
+    writeFileSync(join(dest, 'package.json'), JSON.stringify(manifest, null, 2) + '\n', 'utf8')
+    writeFileSync(join(dest, 'cordis.patch.yml'), PROFILE_PATCH_TEMPLATE, 'utf8')
+    writeFileSync(join(dest, 'pnpm-workspace.yaml'), PROFILE_PNPM_WORKSPACE, 'utf8')
     return { ok: true }
   }
 
   function renameProfile(oldName, newName) {
-    if (!/^[A-Za-z0-9_-]+$/.test(newName)) throw new Error(`非法 profile 名: ${newName}`)
+    assertProfileName(oldName)
+    assertProfileName(newName)
     const src = join(profilesDir, oldName)
     const dest = join(profilesDir, newName)
     if (!existsSync(src)) throw new Error(`profile 不存在: ${oldName}`)
@@ -53,7 +75,7 @@ export function createProfileService({ dshHome }) {
   }
 
   function removeProfile(name) {
-    if (!/^[A-Za-z0-9_-]+$/.test(name)) throw new Error(`非法 profile 名: ${name}`)
+    assertProfileName(name)
     const dir = join(profilesDir, name)
     if (!existsSync(dir)) throw new Error(`profile 不存在: ${name}`)
     rmSync(dir, { recursive: true, force: true })
@@ -61,12 +83,13 @@ export function createProfileService({ dshHome }) {
   }
 
   function copyProfile(from, to) {
-    if (!/^[A-Za-z0-9_-]+$/.test(to)) throw new Error(`非法 profile 名: ${to}`)
+    assertProfileName(from)
+    assertProfileName(to)
     const src = join(profilesDir, from)
     const dest = join(profilesDir, to)
     if (!existsSync(src)) throw new Error(`profile 不存在: ${from}`)
     if (existsSync(dest)) throw new Error(`profile 已存在: ${to}`)
-    cpSync(src, dest, { recursive: true })
+    copyProfileFiles(src, dest)
     return { ok: true }
   }
 

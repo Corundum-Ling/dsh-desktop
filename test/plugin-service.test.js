@@ -141,6 +141,37 @@ describe('install / remove / in-box 保护', () => {
     return { impl, calls }
   }
 
+  it('install 依赖已记录但包未落盘时返回失败', async () => {
+    const spec = 'github:LayneChai/superpowers-dsh'
+    writeFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'package.json'), JSON.stringify({
+      dsh: { profile: { bundles: ['@deepseek-ai/dsh-base'] } },
+      dependencies: { 'superpowers-dsh': spec },
+    }))
+    const { impl } = fakeSpawnImpl()
+    const pm = createPluginManager({ nodePath: 'node.exe', dshEntry: 'dsh.js', dshHome: join(baseDir, 'dsh-home'), env: { PATH: 'C:/bin' }, spawnImpl: impl })
+    const svc = createPluginService({ nodePath: 'node.exe', dshEntry: 'dsh.js', dshHome: join(baseDir, 'dsh-home'), env: { PATH: 'C:/bin' }, runDumpConfigImpl: async () => [] })
+    const res = await svc.install(spec, pm)
+    expect(res.ok).toBe(false)
+    expect(res.needsRestart).toBe(false)
+    expect(res.output).toContain('没有落入 node_modules')
+  })
+
+  it('install 命令异常但 bundle 已落盘时按实际状态成功', async () => {
+    const spec = 'github:example/dsh-bundle'
+    writeFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'node_modules', 'dsh-bundle', 'package.json'),
+      JSON.stringify({ name: 'dsh-bundle', dsh: { bundle: { patch: './cordis.patch.yml' } } }))
+    writeFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'package.json'), JSON.stringify({
+      dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', 'dsh-bundle'] } },
+      dependencies: { 'dsh-bundle': spec },
+    }))
+    const pm = { installPlugin: async () => ({ ok: false, output: '操作超时（已中止）' }) }
+    const svc = createPluginService({ nodePath: 'node.exe', dshEntry: 'dsh.js', dshHome: join(baseDir, 'dsh-home'), env: { PATH: 'C:/bin' }, runDumpConfigImpl: async () => [] })
+    const res = await svc.install(spec, pm)
+    expect(res.ok).toBe(true)
+    expect(res.needsRestart).toBe(true)
+    expect(res.output).toContain('按实际安装成功处理')
+  })
+
   it('install 检测 bundle：有 dsh.bundle → needsRestart=true', async () => {
     writeFileSync(join(baseDir, 'dsh-home', 'profiles', 'web', 'node_modules', 'dsh-bundle', 'package.json'),
       JSON.stringify({ name: 'dsh-bundle', version: '1.0.0', dsh: { bundle: { patch: './cordis.patch.yml' } } }))

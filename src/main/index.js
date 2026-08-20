@@ -1,7 +1,7 @@
 import { app, BrowserWindow, Menu, dialog, ipcMain, shell } from 'electron'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createWriteStream, mkdirSync, readFileSync } from 'node:fs'
+import { createWriteStream, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { createConfig } from './services/config.js'
 import { findFreePort, waitForPort } from './services/port-waiter.js'
 import { DshService } from './services/dsh-service.js'
@@ -64,12 +64,75 @@ function resourcePaths() {
   return { nodePath, pnpmBinDir, dshEntry }
 }
 
-// 市场数据源：拉取 awesome-dsh-plugins 的 PLUGINS.md 原始内容，
+// 市场数据源：拉取 awesome-dsh-plugins 的完整 PLUGINS-ALL.md 原始内容，
 // createMarketplace 负责解析与缓存
 async function fetchPluginsMd() {
-  const res = await fetch('https://raw.githubusercontent.com/AdamPlatin123/awesome-dsh-plugins/main/PLUGINS.md')
+  const res = await fetch('https://raw.githubusercontent.com/AdamPlatin123/awesome-dsh-plugins/main/PLUGINS-ALL.md')
   if (!res.ok) throw new Error(`市场数据源 HTTP ${res.status}`)
   return res.text()
+}
+
+function isGitHubRepositoryUrl(value) {
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' && url.hostname === 'github.com' && !url.port && !url.username && !url.password &&
+      !url.search && !url.hash && /^\/[^/]+\/[^/]+\/?$/.test(url.pathname)
+  } catch {
+    return false
+  }
+}
+
+function isRepositorySlug(value) {
+  return /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(value)
+}
+
+async function inspectMarketplaceRepository(repo) {
+  if (!isRepositorySlug(repo)) return { installable: false, reason: '仓库地址无效' }
+  for (const branch of ['main', 'master']) {
+    const url = `https://raw.githubusercontent.com/${repo}/${branch}/package.json`
+    let res
+    try {
+      res = await fetch(url, { signal: AbortSignal.timeout(10000) })
+    } catch (err) {
+      if (err?.name === 'TimeoutError') throw new Error('仓库验证超时，请检查网络后重试')
+      throw err
+    }
+    if (res.status === 404) continue
+    if (!res.ok) throw new Error(`读取 package.json 失败: HTTP ${res.status}`)
+    const pkg = await res.json()
+    if (!pkg?.dsh?.bundle) {
+      return { installable: false, reason: '仓库根目录未声明 dsh.bundle，不能作为 DSH 插件包安装' }
+    }
+    return {
+      installable: true,
+      packageName: String(pkg.name || ''),
+      requiresBuildApproval: typeof pkg.scripts?.prepare === 'string',
+      branch,
+    }
+  }
+  return { installable: false, reason: '仓库根目录没有 package.json，不能作为 DSH 插件包安装' }
+}
+
+function allowProfileBuild(dshHome, profile, packageName) {
+  if (!/^(?:@[A-Za-z0-9_.-]+\/)?[A-Za-z0-9_.-]+$/.test(packageName)) throw new Error('安装包名无效')
+  const file = join(dshHome, 'profiles', profile, 'pnpm-workspace.yaml')
+  const content = readFileSync(file, 'utf8')
+  const lines = content.replaceAll('\r\n', '\n').split('\n')
+  const header = lines.findIndex(line => /^allowBuilds:\s*$/.test(line))
+  const key = JSON.stringify(packageName)
+  if (header === -1) {
+    const suffix = content.endsWith('\n') ? '' : '\n'
+    writeFileSync(file, `${content}${suffix}\nallowBuilds:\n  ${key}: true\n`, 'utf8')
+    return
+  }
+  let end = header + 1
+  while (end < lines.length && (/^\s+.+:\s+(?:true|false)\s*$/.test(lines[end]) || /^\s*$/.test(lines[end]))) end++
+  const existing = new RegExp(`^\\s+${packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*:`)
+  const quoted = new RegExp(`^\\s+${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*:`)
+  const index = lines.findIndex((line, i) => i > header && i < end && (existing.test(line) || quoted.test(line)))
+  if (index !== -1) lines[index] = `  ${key}: true`
+  else lines.splice(end, 0, `  ${key}: true`)
+  writeFileSync(file, lines.join('\n'), 'utf8')
 }
 
 async function startDsh(config, profile = 'web') {
@@ -341,6 +404,31 @@ if (!gotLock) {
     ipcMain.handle('plugins:remove', (_e, name) => ps.remove(String(name), pm))
     ipcMain.handle('plugins:remove-insert', (_e, rowId) => ps.removeInsert(String(rowId)))
     ipcMain.handle('marketplace:get', (_e, refresh) => mk.get(refresh === true))
+    ipcMain.handle('marketplace:inspect-repository', (event, repo) => {
+      if (event.sender !== childWindows.marketplace?.webContents) return { installable: false, reason: '无效请求来源' }
+      return inspectMarketplaceRepository(String(repo))
+    })
+    ipcMain.handle('marketplace:approve-build', async (event, packageName) => {
+      if (event.sender !== childWindows.marketplace?.webContents) return false
+      const profile = service?.profile ?? 'web'
+      const result = await dialog.showMessageBox(childWindows.marketplace, {
+        type: 'warning',
+        buttons: ['允许并继续安装', '取消'],
+        defaultId: 1,
+        cancelId: 1,
+        noLink: true,
+        title: '允许第三方构建脚本',
+        message: `${packageName} 要求在安装时运行构建脚本`,
+        detail: `只会在当前 ${profile} profile 中允许这个精确包名运行脚本。请仅在信任该 GitHub 仓库时继续。`,
+      })
+      if (result.response !== 0) return false
+      allowProfileBuild(config.dshHome(), profile, String(packageName))
+      return true
+    })
+    ipcMain.on('marketplace:open-repository', (event, value) => {
+      if (event.sender !== childWindows.marketplace?.webContents || !isGitHubRepositoryUrl(value)) return
+      shell.openExternal(value)
+    })
     ipcMain.handle('profiles:list', () => pf.listProfiles())
     ipcMain.handle('profiles:create', (_e, name, template) => pf.createProfile(String(name), String(template ?? 'web')))
     ipcMain.handle('profiles:rename', (_e, oldName, newName) => pf.renameProfile(String(oldName), String(newName)))

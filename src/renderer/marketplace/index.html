@@ -18,24 +18,54 @@
       <section class="action-panel" aria-labelledby="discover-heading">
         <div class="section-copy">
           <h2 id="discover-heading">发现社区扩展</h2>
-          <p>浏览 awesome-dsh-plugins 收录的插件。</p>
+          <p>浏览 awesome-dsh-plugins 收录的插件、Skill、客户端与工具。</p>
         </div>
-        <div class="search-row">
+        <div class="marketplace-filters">
           <input type="text" id="search" aria-label="搜索社区插件" placeholder="搜索名称、说明或分类" autocomplete="off">
+          <div id="type-filter" class="filter-select">
+            <button class="filter-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+              <span>全部类型</span><span class="filter-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="filter-menu" role="listbox" hidden></div>
+          </div>
+          <div id="category-filter" class="filter-select">
+            <button class="filter-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+              <span>全部分类</span><span class="filter-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="filter-menu" role="listbox" hidden></div>
+          </div>
           <button id="refresh-btn" type="button">刷新</button>
         </div>
       </section>
+      <pre class="output marketplace-output" id="output" aria-label="安装输出" tabindex="0" hidden></pre>
       <section class="collection-section" aria-labelledby="market-list-heading">
         <div class="section-header">
           <div>
-            <h2 id="market-list-heading">社区插件</h2>
+            <h2 id="market-list-heading">DSH 生态目录</h2>
             <p>“已验证”是社区列表标记，不代表本应用完成了安全审计。</p>
           </div>
           <span id="result-count" class="section-count"></span>
         </div>
         <div id="list" class="card-grid"></div>
       </section>
-      <pre class="output" id="output" aria-label="安装输出" tabindex="0" hidden></pre>
+      <div id="detail-backdrop" class="detail-backdrop" hidden>
+        <section id="detail-dialog" class="detail-dialog" role="dialog" aria-modal="true" aria-labelledby="detail-title" tabindex="-1">
+          <div class="detail-head">
+            <div>
+              <span id="detail-type" class="badge"></span>
+              <h2 id="detail-title"></h2>
+            </div>
+            <button id="detail-close" class="icon-button" type="button" aria-label="关闭详情">×</button>
+          </div>
+          <div id="detail-meta" class="detail-meta"></div>
+          <p id="detail-description" class="detail-description"></p>
+          <div id="detail-notice" class="detail-notice"></div>
+          <div class="detail-actions">
+            <button id="detail-repository" type="button">打开 GitHub</button>
+            <button id="detail-install" class="primary" type="button">安装</button>
+          </div>
+        </section>
+      </div>
     </div>
   </main>
   <script src="./index.js"></script>

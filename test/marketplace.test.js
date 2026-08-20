@@ -18,14 +18,34 @@ const FIXTURE = `# PLUGINS.md — 插件登记清单（分类版）
 | dsh-ui-all | [linxin666/dsh-web-ui-all](https://github.com/linxin666/dsh-web-ui-all) | UI 集合 | ✅ |
 `
 
+const FULL_FIXTURE = `# PLUGINS-ALL.md
+
+## 🎨 主题皮肤（2）
+
+- \`[可用]\` [dsh-skin](https://github.com/example/dsh-skin) 42 — 自定义主题
+- \`[待定]\` [dsh-other](https://github.com/example/dsh-other) 1,234 — 另一个插件
+`
+
 describe('parsePluginsMd', () => {
   it('解析表格行与分类', () => {
     const plugins = parsePluginsMd(FIXTURE)
     expect(plugins).toEqual([
-      { name: 'dsh-event-auditor', repo: 'qing3a/dsh-event-auditor', description: '事件审计', verified: true, category: '🔌 单插件' },
-      { name: 'dsh-sentinel', repo: 'fuhefei/dsh-sentinel', description: '传感器', verified: false, category: '🔌 单插件' },
-      { name: 'dsh-ui-all', repo: 'linxin666/dsh-web-ui-all', description: 'UI 集合', verified: true, category: '🧰 插件集' },
+      expect.objectContaining({ name: 'dsh-event-auditor', type: 'plugin', installable: true }),
+      expect.objectContaining({ name: 'dsh-sentinel', type: 'plugin', installable: true }),
+      expect.objectContaining({ name: 'dsh-ui-all', type: 'bundle', installable: true }),
     ])
+  })
+
+  it('解析完整清单的分类、状态和星数', () => {
+    expect(parsePluginsMd(FULL_FIXTURE)).toEqual([
+      expect.objectContaining({ name: 'dsh-skin', type: 'plugin', installable: true, stars: 42 }),
+      expect.objectContaining({ name: 'dsh-other', type: 'plugin', installable: true, stars: 1234 }),
+    ])
+  })
+
+  it('Skill 包允许进入 manifest 预检', () => {
+    const fixture = `## 技能包（1）\n- [superpowers-dsh](https://github.com/LayneChai/superpowers-dsh) 1 — skills collection`
+    expect(parsePluginsMd(fixture)[0]).toEqual(expect.objectContaining({ type: 'skill', installable: true }))
   })
 })
 

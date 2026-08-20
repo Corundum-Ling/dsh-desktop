@@ -141,19 +141,25 @@ export function createPluginService({ nodePath, dshEntry, dshHome, env, profile 
 
   async function install(spec, pm) {
     const res = await pm.installPlugin(spec)
-    if (!res.ok) return { ok: false, output: res.output, needsRestart: false }
-    // 从依赖 diff 解析真实包名：registry 直接命中 / git/scoped 按依赖值匹配
+    // 命令可能在安装已落盘后因超时或收尾异常返回失败，先核对最终状态。
     const name = resolveInstalledName(spec)
     const pkg = name ? readInstalledPackage(name) : null
+    if (!res.ok) {
+      if (pkg?.dsh?.bundle) {
+        return {
+          ok: true,
+          output: `${res.output}\n\n插件包已完整落入 node_modules，按实际安装成功处理。命令的超时或错误发生在安装收尾阶段。`,
+          needsRestart: true,
+        }
+      }
+      return { ok: false, output: res.output, needsRestart: false }
+    }
+    // 从依赖 diff 解析真实包名：registry 直接命中 / git/scoped 按依赖值匹配
     if (pkg && pkg.dsh?.bundle) {
       return { ok: true, output: res.output, needsRestart: true }
     }
     if (pkg) {
-      // 非 bundle（无 dsh.bundle manifest）：写 insert 行挂载。
-      // ⚠️ 实测（2026-08-14）：dsh rc.6 对非 bundle insert 行不运行时激活——
-      // host apply 不执行（路由 404）、client 不进 __DSH_BOOT__ 清单；
-      // 加入 bundles 层栈则 fail-loud 拒绝（"declares no dsh.bundle"）。
-      // insert 行保留（dsh 未来支持后自动生效），但如实提示当前不可用。
+      // 非 bundle 包保留原有 insert 挂载行为；市场入口会在调用前校验 dsh.bundle。
       try {
         const patch = readPatch()
         writePatch(patchPath(), addInsertRow(patch, slugify(pkg.name), pkg.name))
@@ -166,7 +172,14 @@ export function createPluginService({ nodePath, dshEntry, dshHome, env, profile 
         return { ok: true, output: `已安装依赖但实时挂载失败: ${err?.message ?? err}（可手动编辑 cordis.patch.yml 或重装）`, needsRestart: false }
       }
     }
-    return { ok: true, output: res.output, needsRestart: true } // 未知类型，保守重启
+    if (name && !pkg) {
+      return {
+        ok: false,
+        output: `${res.output}\n\n依赖记录已更新，但安装包没有落入 node_modules。GitHub 仓库可能触发了 pnpm allowBuilds 限制，或仓库不是可安装包。`,
+        needsRestart: false,
+      }
+    }
+    return { ok: false, output: `${res.output}\n\n无法确认已安装包名称，未执行重启。`, needsRestart: false }
   }
 
   async function remove(name, pm) {
